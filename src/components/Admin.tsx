@@ -60,7 +60,7 @@ export default function Admin() {
     setIsLoading(true);
     
     // Simple password check
-    if (password === 'reyansh12') {
+    if (password === 'Cpxadmin2025') {
       setIsAuthenticated(true);
       toast.success('Admin access granted');
     } else {
