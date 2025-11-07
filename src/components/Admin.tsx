@@ -56,6 +56,14 @@ export default function Admin() {
   const fetchGitHubReleases = useAction(api.github.fetchReleases);
   const syncProjectFromRepo = useAction(api.github.syncProjectFromRepo);
   const validateAdminPassword = useAction(api.admin.validateAdminPassword);
+  const profilesData = useQuery(
+    api.userProfiles.listProfiles,
+    isAuthenticated ? {} : "skip"
+  );
+  const isProfilesLoading = isAuthenticated && profilesData === undefined;
+  const profileAccessDenied = isAuthenticated && profilesData === null;
+  const profileRows = Array.isArray(profilesData) ? profilesData : [];
+
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -230,6 +238,57 @@ export default function Admin() {
         </div>
 
         <div className="grid gap-8">
+          {/* Accounts Overview */}
+          <div className="bg-gradient-to-br from-purple-800/20 to-teal-800/20 backdrop-blur-sm border border-purple-500/30 rounded-2xl p-6">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-white">👥 Team Accounts</h2>
+                <p className="text-sm text-gray-300">
+                  View all members who have access to the dashboard.
+                </p>
+              </div>
+              {!profileAccessDenied && (
+                <span className="rounded-full bg-purple-900/50 px-3 py-1 text-xs font-semibold text-teal-200">
+                  {profileRows.length} account{profileRows.length === 1 ? '' : 's'}
+                </span>
+              )}
+            </div>
+
+            {profileAccessDenied ? (
+              <p className="mt-4 text-sm text-red-300">
+                You need the Admin role to view account information. Update your profile role to "Admin".
+              </p>
+            ) : isProfilesLoading ? (
+              <p className="mt-4 text-sm text-gray-300">Loading account directory…</p>
+            ) : profileRows.length === 0 ? (
+              <p className="mt-4 text-sm text-gray-300">No team accounts found yet.</p>
+            ) : (
+              <div className="mt-6 overflow-x-auto rounded-xl border border-purple-500/20">
+                <table className="min-w-full divide-y divide-purple-500/20">
+                  <thead className="bg-purple-900/40 text-xs uppercase tracking-wide text-purple-200">
+                    <tr>
+                      <th className="px-4 py-3 text-left">Name</th>
+                      <th className="px-4 py-3 text-left">Role</th>
+                      <th className="px-4 py-3 text-left">Email</th>
+                      <th className="px-4 py-3 text-right">Joined</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-purple-500/10">
+                    {profileRows.map((entry) => (
+                      <tr key={entry.userId}>
+                        <td className="px-4 py-3 text-sm text-white">{entry.name}</td>
+                        <td className="px-4 py-3 text-sm text-teal-200">{entry.role}</td>
+                        <td className="px-4 py-3 text-sm text-gray-300">{entry.email ?? '—'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-400 text-right">
+                          {new Date(entry.createdAt).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
           {/* GitHub Integration */}
           <div className="bg-gradient-to-br from-purple-800/20 to-teal-800/20 backdrop-blur-sm border border-purple-500/30 rounded-2xl p-6">
             <h2 className="text-2xl font-bold text-white mb-6">🔗 GitHub Integration</h2>

@@ -40,8 +40,8 @@ export const upsertProfile = mutation({
 
     const trimmedName = args.name.trim();
     const trimmedRole = args.role.trim();
-    if (trimmedName.length === 0) {
-      throw new Error("Name is required");
+    if (trimmedName.length < 2) {
+      throw new Error("Name must be at least 2 characters long");
     }
     if (trimmedRole.length === 0) {
       throw new Error("Role is required");
@@ -69,22 +69,24 @@ export const upsertProfile = mutation({
   },
 });
 
+const adminListValidator = v.array(
+  v.object({
+    userId: v.id("users"),
+    name: v.string(),
+    role: v.string(),
+    email: v.union(v.null(), v.string()),
+    image: v.union(v.null(), v.string()),
+    createdAt: v.number(),
+  })
+);
+
 export const listProfiles = query({
   args: {},
-  returns: v.array(
-    v.object({
-      userId: v.id("users"),
-      name: v.string(),
-      role: v.string(),
-      email: v.union(v.null(), v.string()),
-      image: v.union(v.null(), v.string()),
-      createdAt: v.number(),
-    })
-  ),
+  returns: v.union(v.null(), adminListValidator),
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) {
-      throw new Error("Not authenticated");
+      return null;
     }
 
     const profile = await ctx.db
@@ -93,7 +95,7 @@ export const listProfiles = query({
       .unique();
 
     if (!profile || profile.role.toLowerCase() !== "admin") {
-      throw new Error("Admin access required");
+      return null;
     }
 
     const profiles = await ctx.db.query("userProfiles").collect();
