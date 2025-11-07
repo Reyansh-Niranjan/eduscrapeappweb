@@ -14,7 +14,8 @@
     "lint": "tsc -p convex -noEmit --pretty false && tsc -p . -noEmit --pretty false && convex dev --once && vite build"
   },
   "dependencies": {
-    "@convex-dev/auth": "^0.0.80",
+    "@auth/core": "^0.37.4",
+    "@convex-dev/auth": "^0.0.90",
     "clsx": "^2.1.1",
     "convex": "^1.24.2",
     "react": "^19.0.0",
