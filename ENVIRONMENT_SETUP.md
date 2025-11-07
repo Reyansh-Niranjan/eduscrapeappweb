@@ -1,5 +1,21 @@
 # Environment Setup Guide
 
+## ⚙️ OAuth Provider Configuration
+
+Convex Auth now supports Google and GitHub OAuth sign-in. Configure the following **Convex environment variables** (Settings → Environment Variables):
+
+| Variable | Description |
+| --- | --- |
+| `CONVEX_GOOGLE_CLIENT_ID` | Google OAuth client ID |
+| `CONVEX_GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
+| `CONVEX_GITHUB_CLIENT_ID` | GitHub OAuth client ID |
+| `CONVEX_GITHUB_CLIENT_SECRET` | GitHub OAuth client secret |
+| `SITE_URL` | Base URL of your deployed site (e.g. `https://your-app.vercel.app`) |
+
+After saving these values, users will see “Continue with Google” and “Continue with GitHub” options in the sign-in dialog.
+
+---
+
 ## 🚨 CRITICAL: Add OpenRouter API Key
 
 The chatbot is currently showing a **401 Unauthorized** error because the OpenRouter API key is not configured.
