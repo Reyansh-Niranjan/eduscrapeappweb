@@ -12,31 +12,35 @@ const applicationTables = {
     repositoryUrl: v.string(),
     featured: v.optional(v.boolean()),
   }),
-  
+
   updates: defineTable({
     title: v.string(),
     content: v.string(),
     type: v.union(v.literal("github_release"), v.literal("device_update")),
     imageUrl: v.optional(v.string()),
-    githubReleaseData: v.optional(v.object({
-      version: v.string(),
-      releaseUrl: v.string(),
-      tagName: v.string(),
-      publishedAt: v.string(),
-    })),
+    githubReleaseData: v.optional(
+      v.object({
+        version: v.string(),
+        releaseUrl: v.string(),
+        tagName: v.string(),
+        publishedAt: v.string(),
+      })
+    ),
     published: v.boolean(),
   }).index("by_published", ["published"]),
-  
+
   teamMembers: defineTable({
     name: v.string(),
     role: v.string(),
     bio: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
-    socialLinks: v.optional(v.object({
-      github: v.optional(v.string()),
-      linkedin: v.optional(v.string()),
-      twitter: v.optional(v.string()),
-    })),
+    socialLinks: v.optional(
+      v.object({
+        github: v.optional(v.string()),
+        linkedin: v.optional(v.string()),
+        twitter: v.optional(v.string()),
+      })
+    ),
     order: v.number(),
   }).index("by_order", ["order"]),
 
@@ -46,6 +50,14 @@ const applicationTables = {
     content: v.string(),
     timestamp: v.number(),
   }).index("by_session", ["sessionId"]),
+
+  userProfiles: defineTable({
+    userId: v.id("users"),
+    name: v.string(),
+    role: v.string(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_role", ["role"]),
 };
 
 export default defineSchema({

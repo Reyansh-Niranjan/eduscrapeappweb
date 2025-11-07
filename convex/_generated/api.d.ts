@@ -22,6 +22,7 @@ import type * as projects from "../projects.js";
 import type * as router from "../router.js";
 import type * as team from "../team.js";
 import type * as updates from "../updates.js";
+import type * as userProfiles from "../userProfiles.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -41,6 +42,7 @@ declare const fullApi: ApiFromModules<{
   router: typeof router;
   team: typeof team;
   updates: typeof updates;
+  userProfiles: typeof userProfiles;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,
