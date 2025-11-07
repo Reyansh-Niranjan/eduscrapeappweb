@@ -3,10 +3,29 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+const oauthProviders: Array<{ id: string; label: string }> = [
+  { id: "google", label: "Continue with Google" },
+  { id: "github", label: "Continue with GitHub" },
+];
+
 export function SignInForm() {
   const { signIn } = useAuthActions();
   const [flow, setFlow] = useState<"signIn" | "signUp">("signIn");
   const [submitting, setSubmitting] = useState(false);
+
+  const handleOAuth = async (provider: string) => {
+    setSubmitting(true);
+    try {
+      await signIn(provider, {
+        redirectTo: window.location.origin,
+      });
+      toast.success(`Redirecting to ${provider}...`);
+    } catch (error) {
+      console.error(`[auth] ${provider} sign-in failed`, error);
+      toast.error(`Could not sign in with ${provider}. Please try again.`);
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="w-full">
@@ -64,13 +83,40 @@ export function SignInForm() {
           </button>
         </div>
       </form>
+
       <div className="flex items-center justify-center my-3">
         <hr className="my-4 grow border-gray-200" />
         <span className="mx-4 text-secondary">or</span>
         <hr className="my-4 grow border-gray-200" />
       </div>
-      <button className="auth-button" onClick={() => void signIn("anonymous")}>
-        Sign in anonymously
+
+      <div className="flex flex-col gap-2">
+        {oauthProviders.map((provider) => (
+          <button
+            key={provider.id}
+            className="auth-button flex items-center justify-center gap-2"
+            onClick={() => handleOAuth(provider.id)}
+            disabled={submitting}
+            type="button"
+          >
+            {provider.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex items-center justify-center my-3">
+        <hr className="my-4 grow border-gray-200" />
+        <span className="mx-4 text-secondary">or</span>
+        <hr className="my-4 grow border-gray-200" />
+      </div>
+
+      <button
+        className="auth-button"
+        onClick={() => void signIn("anonymous")}
+        disabled={submitting}
+        type="button"
+      >
+        Continue anonymously
       </button>
     </div>
   );
