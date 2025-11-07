@@ -39,6 +39,13 @@ const applicationTables = {
     })),
     order: v.number(),
   }).index("by_order", ["order"]),
+
+  chatMessages: defineTable({
+    sessionId: v.string(),
+    role: v.union(v.literal("user"), v.literal("assistant")),
+    content: v.string(),
+    timestamp: v.number(),
+  }).index("by_session", ["sessionId"]),
 };
 
 export default defineSchema({

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import OptimizedLogo from './OptimizedLogo';
 
 export default function Hero() {
   const [scrollY, setScrollY] = useState(0);
@@ -27,11 +28,14 @@ export default function Hero() {
         <div className="max-w-4xl mx-auto">
           {/* Team Logo */}
           <div className="mb-8 flex justify-center">
-            <div className="w-32 h-32 rounded-2xl flex items-center justify-center shadow-2xl overflow-hidden">
-              <img 
-                src="https://i.imgur.com/r4W9l7n.png" 
-                alt="Team Logo" 
+            <div className="w-32 h-32 rounded-2xl flex items-center justify-center shadow-2xl overflow-hidden bg-gradient-to-br from-purple-600/30 to-teal-600/30">
+              <OptimizedLogo 
+                src="https://i.imgur.com/r4W9l7n.png"
+                alt="Celestial Coders Team Logo"
                 className="w-full h-full object-cover"
+                fallbackText="CC"
+                width={128}
+                height={128}
               />
             </div>
           </div>

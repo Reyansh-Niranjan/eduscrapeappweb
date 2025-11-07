@@ -55,6 +55,19 @@ body {
   transition: all 0.3s ease;
 }
 
+/* Optimize image loading */
+img {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* Logo specific optimizations */
+.optimized-logo {
+  will-change: opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
 /* Custom gradient text */
 .gradient-text {
   background: linear-gradient(135deg, #0abab5, #3b0a45);

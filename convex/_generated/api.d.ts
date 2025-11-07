@@ -13,7 +13,9 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as admin from "../admin.js";
 import type * as auth from "../auth.js";
+import type * as chatbot from "../chatbot.js";
 import type * as github from "../github.js";
 import type * as http from "../http.js";
 import type * as projects from "../projects.js";
@@ -30,7 +32,9 @@ import type * as updates from "../updates.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  admin: typeof admin;
   auth: typeof auth;
+  chatbot: typeof chatbot;
   github: typeof github;
   http: typeof http;
   projects: typeof projects;

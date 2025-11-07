@@ -9,6 +9,17 @@ export const fetchReleases = action({
     repo: v.string(),
     limit: v.optional(v.number()),
   },
+  returns: v.object({
+    success: v.boolean(),
+    message: v.string(),
+    releases: v.optional(v.array(v.object({
+      name: v.string(),
+      tag_name: v.string(),
+      published_at: v.string(),
+      html_url: v.string()
+    }))),
+    error: v.optional(v.string())
+  }),
   handler: async (ctx, args) => {
     try {
       const limit = args.limit || 5;
@@ -25,7 +36,13 @@ export const fetchReleases = action({
       });
 
       if (!response.ok) {
-        throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+        const errorMessage = `GitHub API error: ${response.status} ${response.statusText}`;
+        console.error(errorMessage);
+        return {
+          success: false,
+          message: errorMessage,
+          error: errorMessage
+        };
       }
 
       const releases = await response.json();
@@ -69,8 +86,13 @@ export const fetchReleases = action({
         }))
       };
     } catch (error) {
+      const errorMessage = `Failed to fetch GitHub releases: ${error instanceof Error ? error.message : 'Unknown error'}`;
       console.error('GitHub API fetch error:', error);
-      throw new Error(`Failed to fetch GitHub releases: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return {
+        success: false,
+        message: errorMessage,
+        error: errorMessage
+      };
     }
   },
 });

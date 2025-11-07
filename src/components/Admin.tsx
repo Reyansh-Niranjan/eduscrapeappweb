@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useAction } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { toast } from 'sonner';
+import { useFormValidation } from '../hooks/useFormValidation';
 
 export default function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -54,19 +55,26 @@ export default function Admin() {
   const createTeamMember = useMutation(api.team.create);
   const fetchGitHubReleases = useAction(api.github.fetchReleases);
   const syncProjectFromRepo = useAction(api.github.syncProjectFromRepo);
+  const validateAdminPassword = useAction(api.admin.validateAdminPassword);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simple password check
-    if (password === 'Cpxadmin2025') {
-      setIsAuthenticated(true);
-      toast.success('Admin access granted');
-    } else {
-      toast.error('Invalid password');
+    try {
+      // Server-side password validation using Convex environment variable
+      const isValid = await validateAdminPassword({ password });
+      if (isValid) {
+        setIsAuthenticated(true);
+        toast.success('Admin access granted');
+      } else {
+        toast.error('Invalid password');
+      }
+    } catch (error) {
+      toast.error('Login failed. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleCreateUpdate = async (e: React.FormEvent) => {
@@ -142,9 +150,15 @@ export default function Admin() {
         repo: githubForm.repo,
         limit: githubForm.limit,
       });
-      toast.success(result.message);
+      
+      if (result.success) {
+        toast.success(result.message);
+      } else {
+        toast.error(result.message || 'Failed to fetch GitHub releases');
+      }
     } catch (error) {
       toast.error('Failed to fetch GitHub releases');
+      console.error('GitHub releases fetch error:', error);
     }
   };
 
