@@ -8,17 +8,28 @@ const oauthProviders: Array<{ id: string; label: string }> = [
   { id: "github", label: "Continue with GitHub" },
 ];
 
-export function SignInForm() {
+interface SignInFormProps {
+  onSuccess?: () => void;
+  redirectHash?: string;
+}
+
+export function SignInForm({ onSuccess, redirectHash = "#dashboard" }: SignInFormProps = {}) {
   const { signIn } = useAuthActions();
   const [flow, setFlow] = useState<"signIn" | "signUp">("signIn");
   const [submitting, setSubmitting] = useState(false);
+
+  const buildRedirectUrl = () => {
+    const hash = redirectHash.startsWith("#") ? redirectHash : `#${redirectHash}`;
+    return `${window.location.origin}/${hash}`;
+  };
 
   const handleOAuth = async (provider: string) => {
     setSubmitting(true);
     try {
       await signIn(provider, {
-        redirectTo: window.location.origin,
+        redirectTo: buildRedirectUrl(),
       });
+      onSuccess?.();
       toast.success(`Redirecting to ${provider}...`);
     } catch (error) {
       console.error(`[auth] ${provider} sign-in failed`, error);
@@ -31,14 +42,19 @@ export function SignInForm() {
     <div className="w-full">
       <form
         className="flex flex-col gap-form-field"
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
           setSubmitting(true);
-          const formData = new FormData(e.target as HTMLFormElement);
+          const form = e.target as HTMLFormElement;
+          const formData = new FormData(form);
           formData.set("flow", flow);
-          void signIn("password", formData).catch((error) => {
+          try {
+            await signIn("password", formData);
+            window.location.hash = redirectHash;
+            onSuccess?.();
+          } catch (error: any) {
             let toastTitle = "";
-            if (error.message.includes("Invalid password")) {
+            if (error.message?.includes("Invalid password")) {
               toastTitle = "Invalid password. Please try again.";
             } else {
               toastTitle =
@@ -48,7 +64,8 @@ export function SignInForm() {
             }
             toast.error(toastTitle);
             setSubmitting(false);
-          });
+            return;
+          }
         }}
       >
         <input
@@ -112,7 +129,17 @@ export function SignInForm() {
 
       <button
         className="auth-button"
-        onClick={() => void signIn("anonymous")}
+        onClick={async () => {
+          setSubmitting(true);
+          try {
+            await signIn("anonymous");
+            window.location.hash = redirectHash;
+            onSuccess?.();
+          } catch (error) {
+            toast.error("Could not continue anonymously. Please try again.");
+            setSubmitting(false);
+          }
+        }}
         disabled={submitting}
         type="button"
       >

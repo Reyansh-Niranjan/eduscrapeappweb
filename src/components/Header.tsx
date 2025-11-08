@@ -20,6 +20,11 @@ export default function Header() {
     }
   };
 
+  const navigateToHash = (hash: string) => {
+    window.location.hash = hash;
+    setIsMobileMenuOpen(false);
+  };
+
   return (
     <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
       isScrolled ? 'bg-purple-900/90 backdrop-blur-md shadow-lg' : 'bg-transparent'
@@ -67,6 +72,21 @@ export default function Header() {
             </button>
           </div>
 
+          <div className="hidden md:flex items-center space-x-4">
+            <button
+              onClick={() => navigateToHash('#dashboard')}
+              className="text-gray-300 hover:text-teal-400 transition-colors duration-200"
+            >
+              Dashboard
+            </button>
+            <button
+              onClick={() => navigateToHash('#login')}
+              className="inline-flex items-center rounded-lg bg-gradient-to-r from-teal-500 to-purple-600 px-4 py-2 text-sm font-semibold text-white transition hover:from-teal-600 hover:to-purple-700"
+            >
+              Login
+            </button>
+          </div>
+
           {/* Mobile Menu Button */}
           <button
             className="md:hidden text-white"
@@ -111,6 +131,18 @@ export default function Header() {
                 className="text-gray-300 hover:text-teal-400 transition-colors duration-200 text-left"
               >
                 Updates
+              </button>
+              <button 
+                onClick={() => navigateToHash('#dashboard')}
+                className="text-gray-300 hover:text-teal-400 transition-colors duration-200 text-left"
+              >
+                Dashboard
+              </button>
+              <button 
+                onClick={() => navigateToHash('#login')}
+                className="rounded-lg bg-gradient-to-r from-teal-500 to-purple-600 px-4 py-2 text-left text-sm font-semibold text-white transition hover:from-teal-600 hover:to-purple-700"
+              >
+                Login
               </button>
             </div>
           </div>

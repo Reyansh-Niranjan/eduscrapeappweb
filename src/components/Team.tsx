@@ -94,6 +94,8 @@ export default function Team() {
                       loading="lazy"
                       fetchPriority="low"
                       sizes="96px"
+                      width={96}
+                      height={96}
                     />
                   </div>
                 ) : (

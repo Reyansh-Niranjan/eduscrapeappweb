@@ -90,6 +90,8 @@ export default function Projects() {
                           loading={index < 2 ? "eager" : "lazy"}
                           fetchPriority={index < 2 ? "high" : "low"}
                           sizes="(max-width: 768px) 100vw, 33vw"
+                          width={720}
+                          height={384}
                         />
                       </div>
                     ) : (

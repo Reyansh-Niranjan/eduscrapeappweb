@@ -5,6 +5,8 @@ import About from "./components/About";
 import Projects from "./components/Projects";
 import Team from "./components/Team";
 import Updates from "./components/Updates";
+import Login from "./components/Login.tsx";
+import Dashboard from "./components/Dashboard.tsx";
 import Footer from "./components/Footer";
 import Admin from "./components/Admin";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -12,32 +14,74 @@ import Chat from "./components/Chat";
 import ProfileCompletionBanner from "./components/ProfileCompletionBanner";
 import { useEffect, useState } from "react";
 
+type View = "home" | "admin" | "login" | "dashboard";
+
 export default function App() {
-  const [showAdmin, setShowAdmin] = useState(false);
+  const [currentView, setCurrentView] = useState<View>("home");
 
   useEffect(() => {
     document.documentElement.style.scrollBehavior = "smooth";
 
-    const checkAdminRoute = () => {
+    const determineView = () => {
       if (
         window.location.pathname === "/admin" ||
         window.location.hash === "#admin" ||
         window.location.search.includes("admin=true")
       ) {
-        setShowAdmin(true);
+        setCurrentView("admin");
+        return;
       }
+      if (window.location.hash === "#login") {
+        setCurrentView("login");
+        return;
+      }
+      if (
+        window.location.hash === "#dashboard" ||
+        window.location.pathname === "/dashboard" ||
+        window.location.search.includes("dashboard=true")
+      ) {
+        setCurrentView("dashboard");
+        return;
+      }
+      setCurrentView("home");
     };
 
-    checkAdminRoute();
+    determineView();
 
-    const handleHashChange = () => checkAdminRoute();
+    const handleHashChange = () => determineView();
     window.addEventListener("hashchange", handleHashChange);
 
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
 
-  if (showAdmin) {
+  if (currentView === "admin") {
     return <Admin />;
+  }
+
+  if (currentView === "login") {
+    return (
+      <Login
+        onCancel={() => {
+          window.location.hash = "";
+          setCurrentView("home");
+        }}
+        onSuccess={() => {
+          window.location.hash = "#dashboard";
+          setCurrentView("dashboard");
+        }}
+      />
+    );
+  }
+
+  if (currentView === "dashboard") {
+    return (
+      <Dashboard
+        onLogout={() => {
+          window.location.hash = "";
+          setCurrentView("home");
+        }}
+      />
+    );
   }
 
   return (

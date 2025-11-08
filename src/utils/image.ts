@@ -1,4 +1,4 @@
-export const getOptimizedImageUrl = (url: string, width = 512, quality = 75) => {
+export const getOptimizedImageUrl = (url: string, width = 384, quality = 70) => {
   if (!url) return "";
 
   const proxyBase = "https://images.weserv.nl";
