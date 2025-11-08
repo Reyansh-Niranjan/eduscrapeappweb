@@ -7,13 +7,13 @@ export default function Footer() {
           <div className="md:col-span-2">
             <div className="flex items-center space-x-3 mb-4">
               <div className="w-10 h-10 bg-gradient-to-r from-teal-400 to-purple-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">T</span>
+                <span className="text-white font-bold text-lg">E</span>
               </div>
-              <span className="text-white font-bold text-xl">Team Portfolio</span>
+              <span className="text-white font-bold text-xl">EduScrapeApp</span>
             </div>
             <p className="text-gray-300 mb-6 max-w-md">
-              A dynamic team of innovators, creators, and problem-solvers dedicated to building 
-              the future through cutting-edge technology and creative solutions.
+              The all-in-one platform that keeps curricula fresh, organised, and easy to share. Automate resource discovery,
+              ensure alignment with standards, and put engaging content into teachers’ hands faster.
             </p>
             
             {/* Social Media Placeholders */}
@@ -53,7 +53,7 @@ export default function Footer() {
                   onClick={() => document.getElementById('about')?.scrollIntoView({ behavior: 'smooth' })}
                   className="text-gray-300 hover:text-teal-400 transition-colors"
                 >
-                  About
+                  Why EduScrapeApp
                 </button>
               </li>
               <li>
@@ -61,7 +61,7 @@ export default function Footer() {
                   onClick={() => document.getElementById('projects')?.scrollIntoView({ behavior: 'smooth' })}
                   className="text-gray-300 hover:text-teal-400 transition-colors"
                 >
-                  Projects
+                  Features
                 </button>
               </li>
               <li>
@@ -97,7 +97,7 @@ export default function Footer() {
 
         <div className="border-t border-purple-500/30 mt-8 pt-8 text-center">
           <p className="text-gray-400">
-            © 2024 Team Portfolio. Built with passion and innovation.
+            © {new Date().getFullYear()} EduScrapeApp. Built for educators who deserve better tools.
           </p>
         </div>
       </div>

@@ -20,23 +20,33 @@ export default function Projects() {
   const sampleProjects: Project[] = [
     {
       _id: "sample1",
-      name: "EduScrapeApp",
+      name: "Smart Resource Scraper",
       description:
-        "An innovative educational mobile application built with modern Android development tools. Features user authentication, real-time data synchronization, and an intuitive interface for enhanced learning experiences.",
-      technologies: ["Java", "Android Studio", "Firebase", "XML", "Material Design"],
+        "Continuously monitors trusted education sites and learning portals, extracts fresh material, and auto-tags resources by grade level, language, and topic.",
+      technologies: ["Android", "Firebase", "Natural Language Processing", "Background Jobs"],
       repositoryUrl: "https://github.com/Reyansh-Niranjan/EduScrapeApp",
       featured: true,
       imageUrl: "https://i.imgur.com/7NwjEoE.jpeg",
     },
     {
       _id: "sample3",
-      name: "IoT Education Device",
+      name: "Curriculum Control Centre",
       description:
-        "Physical device that integrates with our software solutions to provide hands-on learning experiences in STEM education.",
-      technologies: ["Arduino", "Raspberry Pi", "IoT", "Python", "Hardware Design"],
+        "Visual dashboard that highlights gaps in lesson plans, surfaces trending topics, and enables one-click publishing to Google Classroom or school intranets.",
+      technologies: ["React Native", "Analytics", "Role-Based Access", "Google Classroom API"],
       repositoryUrl: "https://github.com/Reyansh-Niranjan/EduScrapeApp",
       featured: true,
       imageUrl: "https://i.imgur.com/avU9LmQ.jpeg",
+    },
+    {
+      _id: "sample4",
+      name: "Offline Companion App",
+      description:
+        "Lightweight Android client that syncs curated playlists for low-connectivity classrooms, giving teachers instant access to approved worksheets and videos.",
+      technologies: ["Android", "Local Caching", "Progressive Sync", "Accessibility"],
+      repositoryUrl: "https://github.com/Reyansh-Niranjan/EduScrapeApp",
+      featured: true,
+      imageUrl: "https://i.imgur.com/ZJHGEkV.jpeg",
     },
   ];
 
@@ -48,10 +58,10 @@ export default function Projects() {
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-              Our <span className="bg-gradient-to-r from-teal-400 to-purple-500 bg-clip-text text-transparent">Projects</span>
+              Core <span className="bg-gradient-to-r from-teal-400 to-purple-500 bg-clip-text text-transparent">Features</span>
             </h2>
             <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-              Explore our innovative solutions and cutting-edge projects that showcase our team's expertise and creativity.
+              Explore the pillars that power EduScrapeApp—from automated scraping to insights that help educators deliver lessons faster.
             </p>
           </div>
 
@@ -119,7 +129,7 @@ export default function Projects() {
                       rel="noopener noreferrer"
                       className="flex-1 bg-gradient-to-r from-teal-500 to-purple-600 text-white py-2 px-4 rounded-lg text-center font-semibold hover:from-teal-600 hover:to-purple-700 transition-all duration-300"
                     >
-                      View Code
+                      Learn More
                     </a>
                   </div>
                 </div>

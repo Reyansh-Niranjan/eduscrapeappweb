@@ -66,8 +66,8 @@ npm run preview
 
 3. **Test the Chatbot**:
    - Click the floating chat button (bottom-right corner)
-   - Try asking: "Tell me about your team"
-   - The chatbot should now respond with information about Celestial Coders
+   - Try asking: "How does EduScrapeApp help curriculum teams?"
+   - The chatbot should now respond with product guidance
 
 ### Troubleshooting:
 

@@ -1,18 +1,19 @@
 export const getOptimizedImageUrl = (url: string, width = 512, quality = 75) => {
-  if (!url) return '';
+  if (!url) return "";
 
-  const proxyBase = 'https://images.weserv.nl';
+  const proxyBase = "https://images.weserv.nl";
   try {
-    const sanitized = url.replace(/^https?:\/\//, '');
-    const encoded = encodeURIComponent(sanitized);
+    const isHttps = /^https:\/\//i.test(url);
+    const sanitized = url.replace(/^https?:\/\//i, "");
+    const encoded = encodeURI(`${isHttps ? "ssl:" : ""}${sanitized}`);
     const params = [
       `url=${encoded}`,
       `w=${width}`,
       `q=${quality}`,
-      'output=webp',
-      'fit=cover',
+      "output=webp",
+      "fit=cover",
     ];
-    return `${proxyBase}/?${params.join('&')}`;
+    return `${proxyBase}/?${params.join("&")}`;
   } catch (error) {
     return url;
   }

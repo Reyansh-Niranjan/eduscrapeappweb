@@ -28,9 +28,9 @@ export default function Header() {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-gradient-to-r from-teal-400 to-purple-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">T</span>
+              <span className="text-white font-bold text-lg">E</span>
             </div>
-            <span className="text-white font-bold text-xl">Team Portfolio</span>
+            <span className="text-white font-bold text-xl">EduScrapeApp</span>
           </div>
 
           {/* Desktop Navigation */}
@@ -45,13 +45,13 @@ export default function Header() {
               onClick={() => scrollToSection('about')}
               className="text-gray-300 hover:text-teal-400 transition-colors duration-200"
             >
-              About
+              Why EduScrapeApp
             </button>
             <button 
               onClick={() => scrollToSection('projects')}
               className="text-gray-300 hover:text-teal-400 transition-colors duration-200"
             >
-              Projects
+              Features
             </button>
             <button 
               onClick={() => scrollToSection('team')}
@@ -91,14 +91,14 @@ export default function Header() {
               <button 
                 onClick={() => scrollToSection('about')}
                 className="text-gray-300 hover:text-teal-400 transition-colors duration-200 text-left"
-              >
-                About
+            >
+              Why EduScrapeApp
               </button>
               <button 
                 onClick={() => scrollToSection('projects')}
                 className="text-gray-300 hover:text-teal-400 transition-colors duration-200 text-left"
-              >
-                Projects
+            >
+              Features
               </button>
               <button 
                 onClick={() => scrollToSection('team')}

@@ -26,14 +26,14 @@ export default function Hero() {
 
       <div className="container mx-auto px-6 text-center relative z-10">
         <div className="max-w-4xl mx-auto">
-          {/* Team Logo */}
+          {/* Product Logo */}
           <div className="mb-8 flex justify-center">
             <div className="w-32 h-32 rounded-2xl flex items-center justify-center shadow-2xl overflow-hidden bg-gradient-to-br from-purple-600/30 to-teal-600/30">
               <OptimizedLogo 
                 src="https://i.imgur.com/r4W9l7n.png"
-                alt="Celestial Coders Team Logo"
+                alt="EduScrapeApp Logo"
                 className="w-full h-full object-cover"
-                fallbackText="CC"
+                fallbackText="ES"
                 width={128}
                 height={128}
               />
@@ -41,13 +41,13 @@ export default function Hero() {
           </div>
 
           <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
-            Innovation Through
-            <span className="bg-gradient-to-r from-teal-400 to-purple-500 bg-clip-text text-transparent"> Collaboration</span>
+            EduScrapeApp
+            <span className="bg-gradient-to-r from-teal-400 to-purple-500 bg-clip-text text-transparent"> Reinvents Learning</span>
           </h1>
           
           <p className="text-xl md:text-2xl text-gray-300 mb-12 max-w-3xl mx-auto leading-relaxed">
-            We are a dynamic team of innovators, creators, and problem-solvers dedicated to building 
-            the future through cutting-edge technology and creative solutions.
+            Discover a unified platform that collects, organises, and delivers curriculum-ready content in seconds.
+            EduScrapeApp blends smart automation with educator-friendly design so schools can keep lesson plans current without the busywork.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
@@ -55,13 +55,13 @@ export default function Hero() {
               onClick={() => document.getElementById('projects')?.scrollIntoView({ behavior: 'smooth' })}
               className="px-8 py-4 bg-gradient-to-r from-teal-500 to-purple-600 text-white font-semibold rounded-lg hover:from-teal-600 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
             >
-              Explore Our Work
+              Explore Features
             </button>
             <button 
               onClick={() => document.getElementById('team')?.scrollIntoView({ behavior: 'smooth' })}
               className="px-8 py-4 border-2 border-teal-400 text-teal-400 font-semibold rounded-lg hover:bg-teal-400 hover:text-white transition-all duration-300 transform hover:scale-105"
             >
-              Meet the Team
+              See Outcomes
             </button>
           </div>
         </div>

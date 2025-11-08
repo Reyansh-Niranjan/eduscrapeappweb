@@ -28,14 +28,14 @@ Once the environment variable is configured:
 2. **Open the website** in your browser
 3. **Click the floating chat button** in the bottom-right corner
 4. **Test with sample questions**:
-   - "Tell me about your team"
-   - "What projects have you built?"
-   - "Who is Reyansh Niranjan?"
-   - "What is EduScrapeApp?"
+   - "How does EduScrapeApp save teacher prep time?"
+   - "What integrations does EduScrapeApp support?"
+   - "Can I review the latest product updates?"
+   - "What makes EduScrapeApp different from manual scraping?"
 
 ### Features
 
-- **Portfolio Context**: The chatbot has access to all your team, project, and update information
+- **Product Context**: The chatbot has access to EduScrapeApp features, impact metrics, and release notes
 - **Real-time Chat**: Messages are sent to OpenRouter's Claude 3.5 Sonnet model
 - **Persistent Sessions**: Chat history is maintained during the session
 - **Responsive Design**: Works on both desktop and mobile devices

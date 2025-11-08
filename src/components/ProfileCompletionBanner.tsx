@@ -4,12 +4,12 @@ import { api } from "../../convex/_generated/api";
 import { toast } from "sonner";
 
 const ROLE_OPTIONS = [
-  "Admin",
-  "Developer",
-  "Designer",
-  "Product Manager",
-  "Marketing",
-  "Contributor",
+  "District Admin",
+  "Curriculum Lead",
+  "Teacher",
+  "Technology Lead",
+  "Principal",
+  "Support Staff",
   "Student",
 ];
 
@@ -79,12 +79,12 @@ export default function ProfileCompletionBanner() {
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h3 className="text-lg font-semibold text-white">
-              {needsProfile ? "Complete your profile" : "Team profile"}
+              {needsProfile ? "Finish setting up your EduScrapeApp profile" : "EduScrapeApp profile"}
             </h3>
             <p className="text-sm text-gray-300">
               {needsProfile
-                ? "Add your name and role so teammates know who is contributing."
-                : "Keep your public profile up to date for the team directory."}
+                ? "Add your name and role so stakeholders know who is configuring automations."
+                : "Keep your organisation details current to help colleagues collaborate."}
             </p>
           </div>
           {!needsProfile && (
@@ -144,7 +144,7 @@ export default function ProfileCompletionBanner() {
 
             <div className="md:col-span-2 flex items-center justify-between">
               <div className="text-xs text-gray-400">
-                These details appear in the admin dashboard and public sections.
+                These details appear in the EduScrapeApp admin console and shared dashboards.
               </div>
               <button
                 type="submit"

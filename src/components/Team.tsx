@@ -79,7 +79,7 @@ export default function Team() {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-          {displayTeam.map((member) => (
+          {displayTeam.map((member: any) => (
             <div
               key={member._id}
               className="group bg-gradient-to-br from-purple-800/20 to-teal-800/20 backdrop-blur-sm border border-purple-500/30 rounded-2xl p-6 hover:border-teal-400/50 transition-all duration-300 transform hover:scale-105 text-center"
@@ -99,7 +99,7 @@ export default function Team() {
                 ) : (
                   <div className="w-24 h-24 bg-gradient-to-r from-teal-400 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
                     <span className="text-white font-bold text-2xl">
-                      {member.name.split(' ').map((n: string) => n[0]).join('')}
+                      {member.name.split(" ").map((n: string) => n[0]).join("")}
                     </span>
                   </div>
                 )}

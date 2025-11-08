@@ -1,8 +1,7 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useAction } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { toast } from 'sonner';
-import { useFormValidation } from '../hooks/useFormValidation';
 
 export default function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -65,7 +64,7 @@ export default function Admin() {
   const profileRows = Array.isArray(profilesData) ? profilesData : [];
 
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
     
@@ -85,7 +84,7 @@ export default function Admin() {
     }
   };
 
-  const handleCreateUpdate = async (e: React.FormEvent) => {
+  const handleCreateUpdate = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
       await createUpdate({
@@ -100,7 +99,7 @@ export default function Admin() {
     }
   };
 
-  const handleCreateProject = async (e: React.FormEvent) => {
+  const handleCreateProject = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
       await createProject({
@@ -127,7 +126,7 @@ export default function Admin() {
     }
   };
 
-  const handleCreateTeamMember = async (e: React.FormEvent) => {
+  const handleCreateTeamMember = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
       await createTeamMember({
@@ -150,7 +149,7 @@ export default function Admin() {
     }
   };
 
-  const handleFetchGitHubReleases = async (e: React.FormEvent) => {
+  const handleFetchGitHubReleases = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
       const result = await fetchGitHubReleases({
@@ -170,7 +169,7 @@ export default function Admin() {
     }
   };
 
-  const handleSyncProject = async (e: React.FormEvent) => {
+  const handleSyncProject = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
       const result = await syncProjectFromRepo({

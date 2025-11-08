@@ -15,13 +15,36 @@ export const getPortfolioContext = query({
         ctx.db.query("updates").withIndex("by_published", (q) => q.eq("published", true)).order("desc").take(5)
       ]);
 
-      let context = "You are the AI assistant for Celestial Coders, a team of 7 innovative developers and designers. Here's the portfolio information:\n\n";
+      let context = "You are EduScrapeApp Assistant, helping schools understand how the EduScrapeApp platform gathers and organises learning resources. Here's the product information:\n\n";
 
-      // Team information
-      context += "TEAM MEMBERS:\n";
-      teamMembers.forEach((member: any, index: number) => {
-        context += `${index + 1}. ${member.name} - ${member.role}`;
-        if (member.bio) context += `: ${member.bio}`;
+      // Impact metrics
+      const impactMetrics = teamMembers.length > 0 ? teamMembers : [
+        {
+          name: "Schools onboarded",
+          role: "12 districts",
+          bio: "Curriculum teams using EduScrapeApp for weekly planning.",
+        },
+        {
+          name: "Educators empowered",
+          role: "240+ teachers",
+          bio: "Staff building playlists and sharing resources daily.",
+        },
+        {
+          name: "Students supported",
+          role: "18k learners",
+          bio: "Receiving curated, standards-aligned materials.",
+        },
+        {
+          name: "Automations live",
+          role: "450+",
+          bio: "Saved searches continuously pulling fresh content.",
+        },
+      ];
+
+      context += "RESULTS SNAPSHOT:\n";
+      impactMetrics.forEach((metric: any, index: number) => {
+        context += `${index + 1}. ${metric.name} - ${metric.role}`;
+        if (metric.bio) context += `: ${metric.bio}`;
         context += "\n";
       });
 
@@ -51,7 +74,7 @@ export const getPortfolioContext = query({
       return context;
     } catch (error) {
       console.error("Error building portfolio context:", error);
-      return "I'm an AI assistant for Celestial Coders. I can help answer questions about the team and projects, though I'm currently experiencing some technical difficulties.";
+      return "I'm EduScrapeApp Assistant. I can help answer questions about the platform, key features, and product roadmap.";
     }
   },
 });
@@ -80,50 +103,75 @@ export const sendChatMessage = action({
       // Get portfolio context
       const context: string = await ctx.runQuery(api.chatbot.getPortfolioContext);
 
+      const apiKey = process.env.OPENROUTER_API_KEY;
+      if (!apiKey) {
+        throw new Error("OpenRouter API key is not configured. Add OPENROUTER_API_KEY in the Convex dashboard.");
+      }
+
+      const model = process.env.OPENROUTER_MODEL ?? "meta-llama/llama-4-maverick:free";
+
       // Call OpenRouter API
       const response: Response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer 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`,
+          "Authorization": `Bearer ${apiKey}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": "https://celestialcoders.com",
-          "X-Title": "Celestial Coders Portfolio",
+          "HTTP-Referer": "https://eduscrapeapp.com",
+          "X-Title": "EduScrapeApp Product Site",
         },
         body: JSON.stringify({
-          model: "anthropic/claude-3.5-sonnet",
+          model,
           messages: [
             {
               role: "system",
-              content: context
+              content: context,
             },
             {
               role: "user",
-              content: args.message
-            }
+              content: args.message,
+            },
           ],
-          max_tokens: 1000,
-          temperature: 0.7,
+          max_tokens: Number(process.env.OPENROUTER_MAX_TOKENS ?? 256),
+          temperature: 0.6,
         }),
       });
 
+      const textBody = await response.text();
+
       if (!response.ok) {
+        console.error("OpenRouter API error response:", textBody);
         throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
       }
 
-      const data: any = await response.json();
-      const aiResponse: string = data.choices[0]?.message?.content || "I apologize, but I couldn't generate a response at this time.";
+      let data: any;
+      try {
+        data = JSON.parse(textBody);
+      } catch (parseError) {
+        console.error("Failed to parse OpenRouter response:", textBody);
+        throw new Error("Invalid response from OpenRouter");
+      }
+      const rawResponse: string = data.choices[0]?.message?.content || "I apologize, but I couldn't generate a response at this time.";
+
+      const cleanedResponse = (() => {
+        let content = rawResponse.replace(/<\s*\/?s\s*>/gi, "").trim();
+        const outMatch = content.match(/\[OUT\](.*)\[\/OUT\]/s);
+        if (outMatch && outMatch[1]) {
+          content = outMatch[1].trim();
+        }
+        return content;
+      })();
 
       // Store AI response
       await ctx.runMutation(internal.chatbot.storeMessage, {
         sessionId: args.sessionId,
         role: "assistant",
-        content: aiResponse,
+        content: cleanedResponse,
         timestamp: Date.now(),
       });
 
       return {
         success: true,
-        response: aiResponse,
+        response: cleanedResponse,
       };
     } catch (error) {
       console.error("Chat error:", error);

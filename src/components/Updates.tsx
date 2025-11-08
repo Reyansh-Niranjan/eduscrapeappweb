@@ -20,8 +20,8 @@ export default function Updates() {
     },
     {
       _id: "2",
-      title: "IoT Device Prototype Completed",
-      content: "Our team has successfully completed the first prototype of our IoT education device. The device integrates seamlessly with our software platform and provides hands-on learning experiences for students.",
+      title: "District Analytics Dashboard Preview",
+      content: "Released early access to the analytics workspace showing adoption KPIs, class engagement trends, and source performance for curriculum leads.",
       type: "device_update" as const,
       published: true,
       _creationTime: Date.now() - 172800000, // 2 days ago
@@ -83,7 +83,7 @@ export default function Updates() {
             Latest <span className="bg-gradient-to-r from-teal-400 to-purple-500 bg-clip-text text-transparent">Updates</span>
           </h2>
           <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-            Stay up to date with our latest releases and device updates.
+            Stay up to date with new releases, roadmap milestones, and platform improvements across EduScrapeApp.
           </p>
         </div>
 

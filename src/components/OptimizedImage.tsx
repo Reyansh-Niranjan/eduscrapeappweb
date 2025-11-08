@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getOptimizedImageUrl } from "../utils/image";
 
 interface OptimizedImageProps {
@@ -24,12 +24,17 @@ export default function OptimizedImage({
 }: OptimizedImageProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [currentSrc, setCurrentSrc] = useState(() => getOptimizedImageUrl(src, width, 75));
+
+  useEffect(() => {
+    setHasError(false);
+    setIsLoaded(false);
+    setCurrentSrc(getOptimizedImageUrl(src, width, 75));
+  }, [src, width]);
 
   if (!src) {
     return null;
   }
-
-  const optimizedSrc = getOptimizedImageUrl(src, width, 75);
 
   if (hasError) {
     const fallbackClassName = `${className} flex items-center justify-center bg-gradient-to-br from-purple-600/20 to-teal-600/20 text-teal-200 text-xs`.trim();
@@ -47,7 +52,7 @@ export default function OptimizedImage({
 
   return (
     <img
-      src={optimizedSrc}
+      src={currentSrc}
       alt={alt}
       width={width}
       height={height}
@@ -58,7 +63,14 @@ export default function OptimizedImage({
       className={computedClassName}
       style={{ objectFit: "cover", backgroundColor: "rgba(15, 52, 96, 0.2)" }}
       onLoad={() => setIsLoaded(true)}
-      onError={() => setHasError(true)}
+      onError={() => {
+        if (currentSrc !== src) {
+          setCurrentSrc(src);
+          setIsLoaded(false);
+        } else {
+          setHasError(true);
+        }
+      }}
     />
   );
 }
