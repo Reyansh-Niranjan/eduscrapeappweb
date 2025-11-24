@@ -3,12 +3,34 @@
 @tailwind utilities;
 
 :root {
-  --color-light: #ffffff;
-  --color-dark: #171717;
-}
-
-.accent-text {
-  @apply text-slate-600;
+  /* Brand Colors - Solid (No Gradients) */
+  --color-purple: #8B5CF6;
+  --color-purple-dark: #7C3AED;
+  --color-teal: #14B8A6;
+  --color-teal-dark: #0D9488;
+  
+  /* Base Colors */
+  --color-white: #FFFFFF;
+  --color-black: #0F172A;
+  --color-gray-50: #F8FAFC;
+  --color-gray-100: #F1F5F9;
+  --color-gray-200: #E2E8F0;
+  --color-gray-300: #CBD5E1;
+  --color-gray-600: #475569;
+  --color-gray-800: #1E293B;
+  
+  /* Spacing */
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 1rem;
+  --spacing-md: 1.5rem;
+  --spacing-lg: 2rem;
+  --spacing-xl: 3rem;
+  
+  /* Border Radius */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
 }
 
 body {
@@ -22,98 +44,248 @@ body {
     Roboto,
     "Helvetica Neue",
     Arial,
-    "Noto Sans",
-    sans-serif,
-    "Apple Color Emoji",
-    "Segoe UI Emoji",
-    "Segoe UI Symbol",
-    "Noto Color Emoji";
-  color: var(--color-dark);
-  background: var(--color-light);
+    sans-serif;
+  color: var(--color-black);
+  background: var(--color-white);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom scrollbar */
+/* Clean scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #1a1a2e;
+  background: var(--color-gray-100);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, #0abab5, #3b0a45);
+  background: var(--color-gray-300);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(to bottom, #0dd4ce, #4a0d52);
+  background: var(--color-gray-600);
 }
 
-/* Smooth animations */
+/* Remove transition from all elements - we'll add selectively */
 * {
-  transition: all 0.3s ease;
+  transition: none;
 }
 
-/* Optimize image loading */
+/* Smooth transitions for interactive elements only */
+button,
+a,
+input,
+textarea,
+select,
+.card,
+.hover-lift {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Optimize images */
 img {
   image-rendering: -webkit-optimize-contrast;
   image-rendering: crisp-edges;
+  display: block;
 }
 
-/* Logo specific optimizations */
+/* Logo optimizations */
 .optimized-logo {
   will-change: opacity;
   transform: translateZ(0);
   backface-visibility: hidden;
 }
 
-/* Custom gradient text */
-.gradient-text {
-  background: linear-gradient(135deg, #0abab5, #3b0a45);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+/* Modern Animation Utilities */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
-/* Glassmorphism effect */
-.glass {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-/* Parallax container */
-.parallax-container {
-  transform-style: preserve-3d;
-  perspective: 1000px;
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-/* Animation keyframes */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-20px); }
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(10, 186, 181, 0.3); }
-  50% { box-shadow: 0 0 40px rgba(10, 186, 181, 0.6); }
+/* Animation classes */
+.fade-in {
+  animation: fadeIn 0.6s ease-out forwards;
+}
+
+.slide-up {
+  animation: slideUp 0.6s ease-out forwards;
+}
+
+.slide-down {
+  animation: slideDown 0.6s ease-out forwards;
+}
+
+.scale-in {
+  animation: scaleIn 0.4s ease-out forwards;
 }
 
 .float-animation {
-  animation: float 6s ease-in-out infinite;
+  animation: float 3s ease-in-out infinite;
 }
 
-.pulse-glow {
-  animation: pulse-glow 3s ease-in-out infinite;
+/* Stagger animations */
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
+
+/* Modern card style (WhatsApp inspired) */
+.card {
+  background: var(--color-white);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-/* only use this to update the style of the auth input fields. use a different class for all other input fields */
+.card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+/* Modern button styles */
+.btn-primary {
+  background: var(--color-purple);
+  color: var(--color-white);
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.25);
+}
+
+.btn-primary:hover {
+  background: var(--color-purple-dark);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: var(--color-teal);
+  color: var(--color-white);
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(20, 184, 166, 0.25);
+}
+
+.btn-secondary:hover {
+  background: var(--color-teal-dark);
+  box-shadow: 0 4px 12px rgba(20, 184, 166, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--color-purple);
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  border: 2px solid var(--color-purple);
+  cursor: pointer;
+}
+
+.btn-outline:hover {
+  background: var(--color-purple);
+  color: var(--color-white);
+}
+
+/* Hover lift effect */
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* Clean text accent */
+.text-accent {
+  color: var(--color-purple);
+}
+
+.text-accent-teal {
+  color: var(--color-teal);
+}
+
+/* Auth form styles */
 .auth-input-field {
-  @apply w-full px-4 py-3 rounded-container bg-white border border-gray-200 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow shadow-sm hover:shadow;
+  @apply w-full px-4 py-3 rounded-lg bg-white border border-gray-200 
+         focus:border-purple-500 focus:ring-2 focus:ring-purple-100 
+         outline-none transition-all shadow-sm hover:shadow;
 }
 
-/* only use this to update the style of the auth buttons. use the button class for all other buttons */
 .auth-button {
-  @apply w-full px-4 py-3 rounded bg-primary text-white font-semibold hover:bg-primary-hover transition-colors shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply w-full px-4 py-3 rounded-lg font-semibold 
+         transition-all shadow-sm hover:shadow-md disabled:opacity-50 
+         disabled:cursor-not-allowed;
+  background: var(--color-purple);
+  color: var(--color-white);
 }
+
+.auth-button:hover:not(:disabled) {
+  background: var(--color-purple-dark);
+  transform: translateY(-1px);
+}
+
+/* Section spacing */
+section {
+  padding: var(--spacing-xl) 0;
+}
+
+/* Smooth page transitions */
+.page-transition {
+  animation: fadeIn 0.4s ease-out;
+}
+
