@@ -24,7 +24,7 @@ export default function Projects() {
       description:
         "Continuously monitors trusted education sites and learning portals, extracts fresh material, and auto-tags resources by grade level, language, and topic.",
       technologies: ["Android", "Firebase", "Natural Language Processing", "Background Jobs"],
-      repositoryUrl: "https://github.com/Reyansh-Niranjan/EduScrapeApp",
+      repositoryUrl: "https://github.com/Reyansh-Niranjan/eduscrapeappweb",
       featured: true,
       imageUrl: "https://i.imgur.com/7NwjEoE.jpeg",
     },
@@ -34,7 +34,7 @@ export default function Projects() {
       description:
         "Visual dashboard that highlights gaps in lesson plans, surfaces trending topics, and enables one-click publishing to Google Classroom or school intranets.",
       technologies: ["React Native", "Analytics", "Role-Based Access", "Google Classroom API"],
-      repositoryUrl: "https://github.com/Reyansh-Niranjan/EduScrapeApp",
+      repositoryUrl: "https://github.com/Reyansh-Niranjan/eduscrapeappweb",
       featured: true,
       imageUrl: "https://i.imgur.com/avU9LmQ.jpeg",
     },
@@ -44,7 +44,7 @@ export default function Projects() {
       description:
         "Lightweight Android client that syncs curated playlists for low-connectivity classrooms, giving teachers instant access to approved worksheets and videos.",
       technologies: ["Android", "Local Caching", "Progressive Sync", "Accessibility"],
-      repositoryUrl: "https://github.com/Reyansh-Niranjan/EduScrapeApp",
+      repositoryUrl: "https://github.com/Reyansh-Niranjan/eduscrapeappweb",
       featured: true,
       imageUrl: "https://i.imgur.com/ZJHGEkV.jpeg",
     },
@@ -54,13 +54,13 @@ export default function Projects() {
 
   return (
     <ErrorBoundary>
-      <section id="projects" className="py-20 relative">
+      <section id="projects" className="py-20 relative" style={{ background: 'var(--theme-bg)' }}>
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-              Core <span className="bg-gradient-to-r from-teal-400 to-purple-500 bg-clip-text text-transparent">Features</span>
+            <h2 className="text-4xl md:text-5xl font-bold mb-6" style={{ color: 'var(--theme-text)' }}>
+              Core <span className="text-purple-600">Features</span>
             </h2>
-            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+            <p className="text-xl max-w-3xl mx-auto" style={{ color: 'var(--theme-text-secondary)' }}>
               Explore the pillars that power EduScrapeApp—from automated scraping to insights that help educators deliver lessons faster.
             </p>
           </div>
@@ -72,17 +72,17 @@ export default function Projects() {
               {displayProjects.map((project, index) => (
                 <div
                   key={project._id}
-                  className="group relative bg-gradient-to-br from-purple-800/20 to-teal-800/20 backdrop-blur-sm border border-purple-500/30 rounded-2xl p-6 hover:border-teal-400/50 transition-all duration-300 transform hover:scale-105"
+                  className="group relative bg-white border border-gray-200 rounded-2xl p-6 hover:border-purple-400 hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
                 >
                   {project.featured && (
-                    <div className="absolute -top-3 -right-3 bg-gradient-to-r from-teal-400 to-purple-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                    <div className="absolute -top-3 -right-3 bg-purple-600 text-white px-3 py-1 rounded-full text-sm font-semibold shadow-md">
                       Featured
                     </div>
                   )}
 
                   <div className="mb-4">
                     {project.imageUrl ? (
-                      <div className="w-full h-48 rounded-lg overflow-hidden mb-4 bg-gradient-to-br from-purple-600/30 to-teal-600/30 border border-purple-500/20">
+                      <div className="w-full h-48 rounded-lg overflow-hidden mb-4 bg-gray-100 border border-gray-200">
                         <OptimizedImage
                           src={project.imageUrl}
                           alt={project.name}
@@ -95,7 +95,7 @@ export default function Projects() {
                         />
                       </div>
                     ) : (
-                      <div className="w-full h-48 bg-gradient-to-br from-purple-600/30 to-teal-600/30 rounded-lg flex items-center justify-center mb-4">
+                      <div className="w-full h-48 bg-gray-100 rounded-lg flex items-center justify-center mb-4 border border-gray-200">
                         <svg className="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path
                             strokeLinecap="round"
@@ -108,17 +108,17 @@ export default function Projects() {
                     )}
                   </div>
 
-                  <h3 className="text-xl font-bold text-white mb-3 group-hover:text-teal-400 transition-colors">
+                  <h3 className="text-xl font-bold mb-3 group-hover:text-purple-600 transition-colors" style={{ color: 'var(--theme-text)' }}>
                     {project.name}
                   </h3>
 
-                  <p className="text-gray-300 mb-4 leading-relaxed">
+                  <p className="mb-4 leading-relaxed" style={{ color: 'var(--theme-text-secondary)' }}>
                     {project.description}
                   </p>
 
                   <div className="flex flex-wrap gap-2 mb-6">
                     {project.technologies.map((tech) => (
-                      <span key={tech} className="px-3 py-1 bg-purple-700/50 text-purple-200 rounded-full text-sm">
+                      <span key={tech} className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
                         {tech}
                       </span>
                     ))}
@@ -129,7 +129,7 @@ export default function Projects() {
                       href={project.repositoryUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 bg-gradient-to-r from-teal-500 to-purple-600 text-white py-2 px-4 rounded-lg text-center font-semibold hover:from-teal-600 hover:to-purple-700 transition-all duration-300"
+                      className="flex-1 bg-purple-600 text-white py-2 px-4 rounded-lg text-center font-semibold hover:bg-purple-700 shadow-sm hover:shadow-md transition-all duration-300"
                     >
                       Learn More
                     </a>

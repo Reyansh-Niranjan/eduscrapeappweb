@@ -31,6 +31,38 @@
   --radius-md: 0.75rem;
   --radius-lg: 1rem;
   --radius-xl: 1.5rem;
+
+  /* Theme Colors - Light Mode (Default) */
+  --theme-bg: #FFFFFF;
+  --theme-bg-secondary: #F8FAFC;
+  --theme-text: #0F172A;
+  --theme-text-secondary: #475569;
+  --theme-text-light: #CBD5E1;
+  --theme-border: #E2E8F0;
+  --theme-border-secondary: #CBD5E1;
+  --theme-card-bg: #FFFFFF;
+  --theme-card-shadow: rgba(0, 0, 0, 0.05);
+  --theme-input-bg: #FFFFFF;
+  --theme-nav-bg: #FFFFFF;
+  --theme-hero-bg: #FFFFFF;
+  --theme-footer-bg: #FFFFFF;
+}
+
+/* Dark Mode Theme */
+[data-theme="dark"] {
+  --theme-bg: #0F172A;
+  --theme-bg-secondary: #1E293B;
+  --theme-text: #FFFFFF;
+  --theme-text-secondary: #CBD5E1;
+  --theme-text-light: #475569;
+  --theme-border: #475569;
+  --theme-border-secondary: #475569;
+  --theme-card-bg: #1E293B;
+  --theme-card-shadow: rgba(0, 0, 0, 0.3);
+  --theme-input-bg: #1E293B;
+  --theme-nav-bg: #1E293B;
+  --theme-hero-bg: #0F172A;
+  --theme-footer-bg: #0F172A;
 }
 
 body {
@@ -45,10 +77,11 @@ body {
     "Helvetica Neue",
     Arial,
     sans-serif;
-  color: var(--color-black);
-  background: var(--color-white);
+  color: var(--theme-text);
+  background: var(--theme-bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Clean scrollbar */
