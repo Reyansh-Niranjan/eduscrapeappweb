@@ -79,10 +79,10 @@ export default function Updates() {
     <section id="updates" className="py-20 relative">
       <div className="container mx-auto px-6">
         <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+          <h2 className="text-4xl md:text-5xl font-bold mb-6" style={{ color: 'var(--theme-text)' }}>
             Latest <span className="bg-gradient-to-r from-teal-400 to-purple-500 bg-clip-text text-transparent">Updates</span>
           </h2>
-          <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+          <p className="text-xl max-w-3xl mx-auto" style={{ color: 'var(--theme-text-secondary)' }}>
             Stay up to date with new releases, roadmap milestones, and platform improvements across EduScrapeApp.
           </p>
         </div>
@@ -102,34 +102,17 @@ export default function Updates() {
                   <div className="flex items-center gap-3 mb-3">
                     <span className={`px-3 py-1 bg-gradient-to-r ${getTypeColor(update.type)} text-white rounded-full text-sm font-semibold`}>
                       {getTypeLabel(update.type)}
+                      Version: {update.githubReleaseData.version}
                     </span>
-                    <span className="text-gray-400 text-sm">
-                      {new Date(update._creationTime).toLocaleDateString()}
-                    </span>
+                    <a
+                      href={update.githubReleaseData.releaseUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-teal-400 hover:text-teal-300 text-sm font-semibold transition-colors"
+                    >
+                      View Release →
+                    </a>
                   </div>
-
-                  <h3 className="text-xl font-bold text-white mb-3 group-hover:text-teal-400 transition-colors">
-                    {update.title}
-                  </h3>
-
-                  <p className="text-gray-300 leading-relaxed mb-4">
-                    {update.content}
-                  </p>
-
-                  {update.githubReleaseData && (
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm text-gray-400">
-                        Version: {update.githubReleaseData.version}
-                      </span>
-                      <a
-                        href={update.githubReleaseData.releaseUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-teal-400 hover:text-teal-300 text-sm font-semibold transition-colors"
-                      >
-                        View Release →
-                      </a>
-                    </div>
                   )}
                 </div>
               </div>
@@ -144,8 +127,8 @@ export default function Updates() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h3 className="text-xl font-semibold text-white mb-2">No Updates Yet</h3>
-            <p className="text-gray-400">Check back soon for the latest news and updates!</p>
+            <h3 className="text-xl font-semibold mb-2" style={{ color: 'var(--theme-text)' }}>No Updates Yet</h3>
+            <p style={{ color: 'var(--theme-text-secondary)' }}>Check back soon for the latest news and updates!</p>
           </div>
         )}
       </div>

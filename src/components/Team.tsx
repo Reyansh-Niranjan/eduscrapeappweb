@@ -70,10 +70,10 @@ export default function Team() {
     <section id="team" className="py-20 relative">
       <div className="container mx-auto px-6">
         <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+          <h2 className="text-4xl md:text-5xl font-bold mb-6" style={{ color: 'var(--theme-text)' }}>
             Meet Our <span className="bg-gradient-to-r from-teal-400 to-purple-500 bg-clip-text text-transparent">Team</span>
           </h2>
-          <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+          <p className="text-xl max-w-3xl mx-auto" style={{ color: 'var(--theme-text-secondary)' }}>
             A diverse group of talented individuals working together to create innovative solutions and drive meaningful change.
           </p>
         </div>
@@ -107,7 +107,7 @@ export default function Team() {
                 )}
               </div>
 
-              <h3 className="text-xl font-bold text-white mb-2 group-hover:text-teal-400 transition-colors">
+              <h3 className="text-xl font-bold mb-2 group-hover:text-teal-400 transition-colors" style={{ color: 'var(--theme-text)' }}>
                 {member.name}
               </h3>
 
@@ -116,7 +116,7 @@ export default function Team() {
               </p>
 
               {member.bio && (
-                <p className="text-gray-300 text-sm leading-relaxed mb-4">
+                <p className="text-sm leading-relaxed mb-4" style={{ color: 'var(--theme-text-secondary)' }}>
                   {member.bio}
                 </p>
               )}
