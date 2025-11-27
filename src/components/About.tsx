@@ -22,11 +22,11 @@ export default function About() {
               </p>
 
               <div className="grid grid-cols-2 gap-6">
-                <div className="card text-center hover-lift">
+                <div className="card text-center hover-lift" style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}>
                   <div className="text-4xl font-bold text-teal-600 mb-2">85%</div>
                   <div className="font-medium" style={{ color: 'var(--theme-text-secondary)' }}>Prep Time Saved</div>
                 </div>
-                <div className="card text-center hover-lift">
+                <div className="card text-center hover-lift" style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}>
                   <div className="text-4xl font-bold text-purple-600 mb-2">10k+</div>
                   <div className="font-medium" style={{ color: 'var(--theme-text-secondary)' }}>Curated Resources</div>
                 </div>
@@ -34,7 +34,7 @@ export default function About() {
             </div>
 
             <div className="relative">
-              <div className="card p-12 hover-lift bg-gradient-to-br from-purple-50 to-teal-50 border-2 border-purple-200">
+              <div className="card p-12 hover-lift" style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}>
                 <div className="text-center">
                   <div className="w-24 h-24 bg-purple-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
                     <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">

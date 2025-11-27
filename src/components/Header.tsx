@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import ThemeToggle from './ThemeToggle';
 
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -86,15 +87,7 @@ export default function Header() {
           </div>
 
           <div className="hidden md:flex items-center space-x-4">
-            <button
-              onClick={() => navigateToHash('#dashboard')}
-              className="transition-colors duration-200 font-medium"
-              style={{ color: 'var(--theme-text-secondary)' }}
-              onMouseEnter={(e) => e.currentTarget.style.color = '#8B5CF6'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--theme-text-secondary)'}
-            >
-              Dashboard
-            </button>
+            <ThemeToggle />
             <button
               onClick={() => navigateToHash('#login')}
               className="btn-primary"
@@ -149,12 +142,9 @@ export default function Header() {
               >
                 Updates
               </button>
-              <button
-                onClick={() => navigateToHash('#dashboard')}
-                className="text-gray-600 hover:text-purple-600 transition-colors duration-200 text-left font-medium"
-              >
-                Dashboard
-              </button>
+              <div className="pt-2">
+                <ThemeToggle />
+              </div>
               <button
                 onClick={() => navigateToHash('#login')}
                 className="btn-primary text-center"

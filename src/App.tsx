@@ -12,7 +12,6 @@ import Admin from "./components/Admin";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import Chat from "./components/Chat";
 import ProfileCompletionBanner from "./components/ProfileCompletionBanner";
-import ThemeToggle from "./components/ThemeToggle";
 import { useEffect, useState } from "react";
 
 type View = "home" | "admin" | "login" | "dashboard";
@@ -89,7 +88,6 @@ export default function App() {
     <ErrorBoundary>
       <div className="min-h-screen" style={{ background: 'var(--theme-bg)' }}>
         <Header />
-        <ThemeToggle />
 
         <main className="relative">
           <ProfileCompletionBanner />

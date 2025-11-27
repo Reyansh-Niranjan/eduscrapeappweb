@@ -72,7 +72,8 @@ export default function Projects() {
               {displayProjects.map((project, index) => (
                 <div
                   key={project._id}
-                  className="group relative bg-white border border-gray-200 rounded-2xl p-6 hover:border-purple-400 hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
+                  className="group relative rounded-2xl p-6 hover:border-purple-400 hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
+                  style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
                 >
                   {project.featured && (
                     <div className="absolute -top-3 -right-3 bg-purple-600 text-white px-3 py-1 rounded-full text-sm font-semibold shadow-md">
@@ -82,7 +83,7 @@ export default function Projects() {
 
                   <div className="mb-4">
                     {project.imageUrl ? (
-                      <div className="w-full h-48 rounded-lg overflow-hidden mb-4 bg-gray-100 border border-gray-200">
+                      <div className="w-full h-48 rounded-lg overflow-hidden mb-4" style={{ background: 'var(--theme-bg-secondary)', border: '1px solid var(--theme-border)' }}>
                         <OptimizedImage
                           src={project.imageUrl}
                           alt={project.name}
@@ -95,8 +96,8 @@ export default function Projects() {
                         />
                       </div>
                     ) : (
-                      <div className="w-full h-48 bg-gray-100 rounded-lg flex items-center justify-center mb-4 border border-gray-200">
-                        <svg className="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="w-full h-48 rounded-lg flex items-center justify-center mb-4" style={{ background: 'var(--theme-bg-secondary)', border: '1px solid var(--theme-border)' }}>
+                        <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: 'var(--theme-text-secondary)' }}>
                           <path
                             strokeLinecap="round"
                             strokeLinejoin="round"

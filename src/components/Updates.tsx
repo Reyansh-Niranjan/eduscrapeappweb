@@ -76,7 +76,7 @@ export default function Updates() {
   };
 
   return (
-    <section id="updates" className="py-20 relative">
+    <section id="updates" className="py-20 relative" style={{ background: 'var(--theme-bg)' }}>
       <div className="container mx-auto px-6">
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold mb-6" style={{ color: 'var(--theme-text)' }}>
@@ -102,18 +102,35 @@ export default function Updates() {
                   <div className="flex items-center gap-3 mb-3">
                     <span className={`px-3 py-1 bg-gradient-to-r ${getTypeColor(update.type)} text-white rounded-full text-sm font-semibold`}>
                       {getTypeLabel(update.type)}
-                      Version: {update.githubReleaseData.version}
+                      {update.type === 'github_release' && update.githubReleaseData && (
+                        <> - Version: {update.githubReleaseData.version}</>
+                      )}
                     </span>
-                    <a
-                      href={update.githubReleaseData.releaseUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-teal-400 hover:text-teal-300 text-sm font-semibold transition-colors"
-                    >
-                      View Release →
-                    </a>
+                    {update.type === 'github_release' && update.githubReleaseData && (
+                      <a
+                        href={update.githubReleaseData.releaseUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-teal-400 hover:text-teal-300 text-sm font-semibold transition-colors"
+                      >
+                        View Release →
+                      </a>
+                    )}
                   </div>
-                  )}
+
+                  <h3 className="text-xl font-bold mb-2" style={{ color: 'var(--theme-text)' }}>
+                    {update.title}
+                  </h3>
+                  <p className="leading-relaxed mb-4" style={{ color: 'var(--theme-text-secondary)' }}>
+                    {update.content}
+                  </p>
+                  <span className="text-sm" style={{ color: 'var(--theme-text-secondary)' }}>
+                    {new Date(update._creationTime).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </span>
                 </div>
               </div>
             </div>
