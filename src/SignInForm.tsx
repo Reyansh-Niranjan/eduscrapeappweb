@@ -5,7 +5,6 @@ import { toast } from "sonner";
 
 const oauthProviders: Array<{ id: string; label: string }> = [
   { id: "google", label: "Continue with Google" },
-  { id: "github", label: "Continue with GitHub" },
 ];
 
 interface SignInFormProps {

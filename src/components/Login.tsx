@@ -17,7 +17,7 @@ export default function Login({ onSuccess, onCancel }: LoginProps) {
           </div>
           <h1 className="text-3xl font-bold text-gray-900">Welcome Back</h1>
           <p className="mt-2 text-sm text-gray-600">
-            Choose Google, GitHub, or email to access your EduScrapeApp dashboard.
+            Choose Google or email to access your EduScrapeApp dashboard.
           </p>
         </div>
 
