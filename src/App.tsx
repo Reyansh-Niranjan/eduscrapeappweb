@@ -10,7 +10,6 @@ import Dashboard from "./components/Dashboard.tsx";
 import Footer from "./components/Footer";
 import Admin from "./components/Admin";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import Chat from "./components/Chat";
 import ProfileCompletionBanner from "./components/ProfileCompletionBanner";
 import { useEffect, useState } from "react";
 
@@ -99,7 +98,6 @@ export default function App() {
         </main>
 
         <Footer />
-        <Chat />
         <Toaster theme="light" />
       </div>
     </ErrorBoundary>

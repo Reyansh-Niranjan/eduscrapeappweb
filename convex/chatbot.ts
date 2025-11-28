@@ -108,7 +108,7 @@ export const sendChatMessage = action({
         throw new Error("OpenRouter API key is not configured. Add OPENROUTER_API_KEY in the Convex dashboard.");
       }
 
-      const model = process.env.OPENROUTER_MODEL ?? "meta-llama/llama-4-maverick:free";
+      const model = process.env.OPENROUTER_MODEL ?? "nvidia/nemotron-nano-12b-v2-vl:free";
 
       // Call OpenRouter API
       const response: Response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -215,7 +215,7 @@ export const getChatHistory = query({
       .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
       .order("asc")
       .collect();
-    
+
     return messages.map((msg: any) => ({
       _id: msg._id,
       _creationTime: msg._creationTime,
