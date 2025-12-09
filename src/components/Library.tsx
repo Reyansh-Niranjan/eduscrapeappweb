@@ -43,7 +43,7 @@ export default function Library() {
   const [progress, setProgress] = useState<{ current: number; total: number; stage: string }>({ current: 0, total: 0, stage: '' });
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch directly from Firebase hosting
+  // Fetch directly from Firebase hosting (CORS now enabled)
   const BASE_URL = "https://eduscrape-host.web.app";
   const pageWidth = useMemo(() => {
     if (typeof window === "undefined") return 900;
