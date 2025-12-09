@@ -398,6 +398,14 @@ export default function Library() {
               }}
               loading={<div className="text-center text-gray-300 py-6">Loading PDF...</div>}
               error={<div className="text-center text-red-300 py-6">Unable to load PDF.</div>}
+              options={{
+                cMapUrl: 'https://unpkg.com/pdfjs-dist@3.11.174/cmaps/',
+                cMapPacked: true,
+                // Set standardFontDataUrl for built-in fonts
+                standardFontDataUrl: 'https://unpkg.com/pdfjs-dist@3.11.174/standard_fonts/',
+                // Disable workers for image decoding to avoid WASM errors
+                isEvalSupported: false,
+              }}
             >
               <Page
                 pageNumber={pageNumber}
