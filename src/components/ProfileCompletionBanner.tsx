@@ -28,11 +28,15 @@ export default function ProfileCompletionBanner() {
 
   const [form, setForm] = useState<ProfileState>({ name: "", role: "", grade: "" });
   const [saving, setSaving] = useState(false);
+  
+  // Only show banner if profile is incomplete (missing name or role)
+  // Once profile is set, this banner never shows again - users must use Profile Edit page
   const needsProfile = useMemo(() => {
     if (!user) return false;
     if (!profile) return true;
     return profile.name.trim().length === 0 || profile.role.trim().length === 0;
   }, [user, profile]);
+  
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
@@ -49,6 +53,11 @@ export default function ProfileCompletionBanner() {
   }, [needsProfile]);
 
   if (!user) {
+    return null;
+  }
+
+  // Don't show banner at all if profile is complete - user must use Profile Edit page
+  if (!needsProfile) {
     return null;
   }
 
@@ -87,111 +96,99 @@ export default function ProfileCompletionBanner() {
   return (
     <section className="mx-auto mb-12 w-full max-w-3xl">
       <div className="rounded-2xl border border-purple-500/30 bg-gradient-to-br from-purple-900/60 to-teal-900/60 p-6 shadow-lg backdrop-blur">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-4">
           <div>
             <h3 className="text-lg font-semibold text-white">
-              {needsProfile ? "Finish setting up your EduScrapeApp profile" : "EduScrapeApp profile"}
+              Complete your EduScrapeApp profile
             </h3>
             <p className="text-sm text-gray-300">
-              {needsProfile
-                ? "Add your name and role so stakeholders know who is configuring automations."
-                : "Keep your organisation details current to help colleagues collaborate."}
+              Set up your profile once - you can update it later from the dashboard. 
+              {form.role === "Student" && " Your grade selection helps us provide the right content for you."}
             </p>
           </div>
-          {!needsProfile && (
-            <button
-              type="button"
-              onClick={() => setExpanded((prev) => !prev)}
-              className="rounded-lg border border-teal-400/60 px-4 py-2 text-sm font-semibold text-teal-200 transition hover:border-teal-300 hover:text-white"
-            >
-              {expanded ? "Cancel" : "Edit profile"}
-            </button>
-          )}
         </div>
 
-        {expanded && (
-          <form onSubmit={handleSubmit} className="mt-6 grid gap-4 md:grid-cols-2">
-            <div className="md:col-span-1">
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-300">
-                Name
-              </label>
-              <input
-                type="text"
-                value={form.name}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, name: event.target.value }))
-                }
-                className="w-full rounded-lg border border-purple-500/40 bg-purple-950/60 px-4 py-2 text-sm text-white outline-none transition focus:border-teal-400 focus:ring-2 focus:ring-teal-500/40"
-                placeholder="Your full name"
-                required
-              />
-            </div>
+        <form onSubmit={handleSubmit} className="mt-6 grid gap-4 md:grid-cols-2">
+          <div className="md:col-span-1">
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-300">
+              Name
+            </label>
+            <input
+              type="text"
+              value={form.name}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, name: event.target.value }))
+              }
+              className="w-full rounded-lg border border-purple-500/40 bg-purple-950/60 px-4 py-2 text-sm text-white outline-none transition focus:border-teal-400 focus:ring-2 focus:ring-teal-500/40"
+              placeholder="Your full name"
+              required
+            />
+          </div>
 
-            <div className="md:col-span-1">
+          <div className="md:col-span-1">
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-300">
+              Role
+            </label>
+            <select
+              value={form.role}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, role: event.target.value }))
+              }
+              className="w-full rounded-lg border border-purple-500/40 bg-purple-950/60 px-4 py-2 text-sm text-white outline-none transition focus:border-teal-400 focus:ring-2 focus:ring-teal-500/40"
+              required
+            >
+              <option value="" disabled>
+                Select your role
+              </option>
+              {ROLE_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+              {!ROLE_OPTIONS.includes(form.role) && form.role.trim().length > 0 && (
+                <option value={form.role}>{form.role}</option>
+              )}
+            </select>
+          </div>
+
+          {form.role === "Student" && (
+            <div className="md:col-span-2">
               <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-300">
-                Role
+                Grade
               </label>
               <select
-                value={form.role}
+                value={form.grade}
                 onChange={(event) =>
-                  setForm((prev) => ({ ...prev, role: event.target.value }))
+                  setForm((prev) => ({ ...prev, grade: event.target.value }))
                 }
                 className="w-full rounded-lg border border-purple-500/40 bg-purple-950/60 px-4 py-2 text-sm text-white outline-none transition focus:border-teal-400 focus:ring-2 focus:ring-teal-500/40"
                 required
               >
                 <option value="" disabled>
-                  Select your role
+                  Select your grade
                 </option>
-                {ROLE_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
+                {GRADE_OPTIONS.map((grade) => (
+                  <option key={grade} value={grade}>
+                    {grade.replace('Class', 'Class ')}
                   </option>
                 ))}
-                {!ROLE_OPTIONS.includes(form.role) && form.role.trim().length > 0 && (
-                  <option value={form.role}>{form.role}</option>
-                )}
               </select>
             </div>
+          )}
 
-            {form.role === "Student" && (
-              <div className="md:col-span-2">
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-300">
-                  Grade
-                </label>
-                <select
-                  value={form.grade}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, grade: event.target.value }))
-                  }
-                  className="w-full rounded-lg border border-purple-500/40 bg-purple-950/60 px-4 py-2 text-sm text-white outline-none transition focus:border-teal-400 focus:ring-2 focus:ring-teal-500/40"
-                  required
-                >
-                  <option value="" disabled>
-                    Select your grade
-                  </option>
-                  {GRADE_OPTIONS.map((grade) => (
-                    <option key={grade} value={grade}>
-                      {grade.replace('Class', 'Class ')}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <div className="md:col-span-2 flex items-center justify-between">
-              <div className="text-xs text-gray-400">
-                These details appear in the EduScrapeApp admin console and shared dashboards.
-              </div>
-              <button
-                type="submit"
-                disabled={saving}
-                className="rounded-lg bg-gradient-to-r from-teal-500 to-purple-600 px-4 py-2 text-sm font-semibold text-white transition hover:from-teal-600 hover:to-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {saving ? "Saving..." : "Save profile"}
-              </button>
+          <div className="md:col-span-2 flex items-center justify-between">
+            <div className="text-xs text-gray-400">
+              These details appear in the EduScrapeApp admin console and shared dashboards.
             </div>
-          </form>
-        )}
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-lg bg-gradient-to-r from-teal-500 to-purple-600 px-4 py-2 text-sm font-semibold text-white transition hover:from-teal-600 hover:to-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {saving ? "Saving..." : "Save profile"}
+            </button>
+          </div>
+        </form>
       </div>
     </section>
   );
