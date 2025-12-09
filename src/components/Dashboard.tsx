@@ -1,13 +1,14 @@
 import { useState } from "react";
 import Library from "./Library";
-import { BookOpen, LayoutDashboard } from "lucide-react";
+import ProfileEdit from "./ProfileEdit";
+import { BookOpen, LayoutDashboard, UserCircle } from "lucide-react";
 
 interface DashboardProps {
   onLogout: () => void;
 }
 
 export default function Dashboard({ onLogout }: DashboardProps) {
-  const [activeTab, setActiveTab] = useState<"overview" | "library">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "library" | "profile">("overview");
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
@@ -38,6 +39,17 @@ export default function Dashboard({ onLogout }: DashboardProps) {
                 <BookOpen className="h-4 w-4" />
                 Library
               </button>
+              <button
+                onClick={() => setActiveTab("profile")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
+                  activeTab === "profile"
+                    ? "bg-purple-100 text-purple-700 font-semibold"
+                    : "text-gray-600 hover:bg-gray-100"
+                }`}
+              >
+                <UserCircle className="h-4 w-4" />
+                Profile
+              </button>
             </div>
 
             <button
@@ -53,6 +65,8 @@ export default function Dashboard({ onLogout }: DashboardProps) {
       {/* Content Area */}
       {activeTab === "library" ? (
         <Library />
+      ) : activeTab === "profile" ? (
+        <ProfileEdit onCancel={() => setActiveTab("overview")} />
       ) : (
         <div className="px-6 py-12">
           <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
