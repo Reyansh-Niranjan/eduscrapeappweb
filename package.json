@@ -7,7 +7,7 @@
     "dev": "npm-run-all --parallel dev:frontend dev:backend",
     "dev:frontend": "vite --open",
     "dev:backend": "convex dev",
-    "build": "convex deploy && vite build",
+    "build": "vite build",
     "build:frontend": "vite build",
     "build:backend": "convex deploy",
     "preview": "vite preview",

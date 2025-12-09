@@ -43,8 +43,8 @@ export default function Library() {
   const [progress, setProgress] = useState<{ current: number; total: number; stage: string }>({ current: 0, total: 0, stage: '' });
   const [error, setError] = useState<string | null>(null);
 
-  // Use Convex HTTP proxy to bypass CORS in production
-  const BASE_URL = (import.meta.env.VITE_CONVEX_URL || "").replace(/\/$/, "") + "/library";
+  // Fetch directly from Firebase hosting
+  const BASE_URL = "https://eduscrape-host.web.app";
   const pageWidth = useMemo(() => {
     if (typeof window === "undefined") return 900;
     return Math.min(1200, window.innerWidth - 80);
@@ -76,7 +76,10 @@ export default function Library() {
   const fetchStructure = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${BASE_URL}/structure.json`);
+      const response = await fetch(`${BASE_URL}/structure.json`, {
+        mode: 'cors',
+        credentials: 'omit'
+      });
       if (!response.ok) throw new Error("Failed to load library structure");
       const data = await response.json();
       console.log("Loaded structure:", data);
@@ -93,7 +96,10 @@ export default function Library() {
   // Fetch zips.json to get list of all ZIP files
   const fetchZipsList = async () => {
     try {
-      const response = await fetch(`${BASE_URL}/zips.json`);
+      const response = await fetch(`${BASE_URL}/zips.json`, {
+        mode: 'cors',
+        credentials: 'omit'
+      });
       if (!response.ok) throw new Error("Failed to load zips list");
       const data = await response.json();
       const paths = data.map((item: any) => item.path);
