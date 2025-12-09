@@ -43,8 +43,8 @@ export default function Library() {
   const [progress, setProgress] = useState<{ current: number; total: number; stage: string }>({ current: 0, total: 0, stage: '' });
   const [error, setError] = useState<string | null>(null);
 
-  // Temporary hardcoded host; replace with env later
-  const BASE_URL = "https://eduscrape-host.web.app";
+  // Use Convex HTTP proxy to bypass CORS in production
+  const BASE_URL = (import.meta.env.VITE_CONVEX_URL || "").replace(/\/$/, "") + "/library";
   const pageWidth = useMemo(() => {
     if (typeof window === "undefined") return 900;
     return Math.min(1200, window.innerWidth - 80);

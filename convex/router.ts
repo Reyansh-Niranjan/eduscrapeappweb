@@ -44,4 +44,30 @@ http.route({
   }),
 });
 
+// Library proxy to bypass CORS from Firebase hosting
+const proxiedFetch = async (path: string) => {
+  const target = `https://eduscrape-host.web.app${path}`;
+  const response = await fetch(target);
+  return new Response(response.body, {
+    status: response.status,
+    headers: {
+      "Content-Type": response.headers.get("Content-Type") ?? "application/json",
+      "Access-Control-Allow-Origin": "*",
+      "Cache-Control": "public, max-age=300",
+    },
+  });
+};
+
+http.route({
+  path: "/library/structure.json",
+  method: "GET",
+  handler: httpAction(async () => proxiedFetch("/structure.json")),
+});
+
+http.route({
+  path: "/library/zips.json",
+  method: "GET",
+  handler: httpAction(async () => proxiedFetch("/zips.json")),
+});
+
 export default http;
