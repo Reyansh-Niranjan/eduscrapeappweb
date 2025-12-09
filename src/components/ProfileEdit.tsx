@@ -77,7 +77,8 @@ export default function ProfileEdit({ onCancel }: ProfileEditProps) {
     });
   };
 
-  if (!profile) {
+  // Show loading only if we're still fetching (undefined), not if profile doesn't exist (null)
+  if (profile === undefined) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
