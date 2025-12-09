@@ -19,34 +19,24 @@ export default function Projects() {
 
   const sampleProjects: Project[] = [
     {
-      _id: "sample1",
-      name: "Smart Resource Scraper",
+      _id: "eduscrape-app",
+      name: "EduScrapeApp",
       description:
-        "Continuously monitors trusted education sites and learning portals, extracts fresh material, and auto-tags resources by grade level, language, and topic.",
-      technologies: ["Android", "Firebase", "Natural Language Processing", "Background Jobs"],
+        "Web hub that orchestrates the complete scraping workflow, from discovery to curriculum tagging, so coordinators maintain a single source of truth.",
+      technologies: ["React", "Convex", "TailwindCSS", "Automation"],
       repositoryUrl: "https://github.com/Reyansh-Niranjan/eduscrapeappweb",
       featured: true,
       imageUrl: "https://i.imgur.com/7NwjEoE.jpeg",
     },
     {
-      _id: "sample3",
-      name: "Curriculum Control Centre",
+      _id: "eduscraper-device",
+      name: "EduScraper-Device",
       description:
-        "Visual dashboard that highlights gaps in lesson plans, surfaces trending topics, and enables one-click publishing to Google Classroom or school intranets.",
-      technologies: ["React Native", "Analytics", "Role-Based Access", "Google Classroom API"],
+        "An ESP32-powered autonomous device that intelligently downloads and stores educational resources on an SD card, enabling offline access in low-connectivity environments with a custom-built display library.",
+      technologies: ["ESP32", "C++", "SD Card Storage", "Offline-First", "Custom UI Library"],
       repositoryUrl: "https://github.com/Reyansh-Niranjan/eduscrapeappweb",
       featured: true,
-      imageUrl: "https://i.imgur.com/avU9LmQ.jpeg",
-    },
-    {
-      _id: "sample4",
-      name: "Offline Companion App",
-      description:
-        "Lightweight Android client that syncs curated playlists for low-connectivity classrooms, giving teachers instant access to approved worksheets and videos.",
-      technologies: ["Android", "Local Caching", "Progressive Sync", "Accessibility"],
-      repositoryUrl: "https://github.com/Reyansh-Niranjan/eduscrapeappweb",
-      featured: true,
-      imageUrl: "https://i.imgur.com/ZJHGEkV.jpeg",
+      imageUrl: "https://i.imgur.com/PLjFSoX.jpeg",
     },
   ];
 

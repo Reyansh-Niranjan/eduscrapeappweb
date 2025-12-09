@@ -13,9 +13,12 @@ const ROLE_OPTIONS = [
   "Student",
 ];
 
+const GRADE_OPTIONS = Array.from({ length: 12 }, (_, i) => `Class${i + 1}`);
+
 type ProfileState = {
   name: string;
   role: string;
+  grade: string;
 };
 
 export default function ProfileCompletionBanner() {
@@ -23,7 +26,7 @@ export default function ProfileCompletionBanner() {
   const profile = useQuery(api.userProfiles.getMyProfile);
   const upsertProfile = useMutation(api.userProfiles.upsertProfile);
 
-  const [form, setForm] = useState<ProfileState>({ name: "", role: "" });
+  const [form, setForm] = useState<ProfileState>({ name: "", role: "", grade: "" });
   const [saving, setSaving] = useState(false);
   const needsProfile = useMemo(() => {
     if (!user) return false;
@@ -34,7 +37,7 @@ export default function ProfileCompletionBanner() {
 
   useEffect(() => {
     if (profile) {
-      setForm({ name: profile.name, role: profile.role });
+      setForm({ name: profile.name, role: profile.role, grade: profile.grade || "" });
       setExpanded(false);
     }
   }, [profile]);
@@ -59,10 +62,18 @@ export default function ProfileCompletionBanner() {
       toast.error("Please select a role.");
       return;
     }
+    if (form.role === "Student" && form.grade.trim().length === 0) {
+      toast.error("Please select your grade.");
+      return;
+    }
 
     setSaving(true);
     try {
-      await upsertProfile({ name: form.name.trim(), role: form.role.trim() });
+      await upsertProfile({ 
+        name: form.name.trim(), 
+        role: form.role.trim(),
+        grade: form.role === "Student" ? form.grade : undefined
+      });
       toast.success("Profile updated");
       setExpanded(false);
     } catch (error) {
@@ -141,6 +152,31 @@ export default function ProfileCompletionBanner() {
                 )}
               </select>
             </div>
+
+            {form.role === "Student" && (
+              <div className="md:col-span-2">
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-300">
+                  Grade
+                </label>
+                <select
+                  value={form.grade}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, grade: event.target.value }))
+                  }
+                  className="w-full rounded-lg border border-purple-500/40 bg-purple-950/60 px-4 py-2 text-sm text-white outline-none transition focus:border-teal-400 focus:ring-2 focus:ring-teal-500/40"
+                  required
+                >
+                  <option value="" disabled>
+                    Select your grade
+                  </option>
+                  {GRADE_OPTIONS.map((grade) => (
+                    <option key={grade} value={grade}>
+                      {grade.replace('Class', 'Class ')}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div className="md:col-span-2 flex items-center justify-between">
               <div className="text-xs text-gray-400">

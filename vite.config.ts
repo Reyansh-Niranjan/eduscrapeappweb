@@ -40,4 +40,14 @@ window.addEventListener('message', async (message) => {
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  server: {
+    proxy: {
+      '/api/library': {
+        target: 'https://eduscrape-host.web.app',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/library/, ''),
+        secure: true,
+      },
+    },
+  },
 }));

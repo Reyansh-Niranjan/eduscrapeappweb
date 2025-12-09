@@ -7,6 +7,7 @@ const profileValidator = v.object({
   userId: v.id("users"),
   name: v.string(),
   role: v.string(),
+  grade: v.optional(v.string()),
   _creationTime: v.number(),
 });
 
@@ -30,6 +31,7 @@ export const upsertProfile = mutation({
   args: {
     name: v.string(),
     role: v.string(),
+    grade: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -56,12 +58,14 @@ export const upsertProfile = mutation({
       await ctx.db.patch(existing._id, {
         name: trimmedName,
         role: trimmedRole,
+        grade: args.grade,
       });
     } else {
       await ctx.db.insert("userProfiles", {
         userId,
         name: trimmedName,
         role: trimmedRole,
+        grade: args.grade,
       });
     }
 
@@ -74,6 +78,7 @@ const adminListValidator = v.array(
     userId: v.id("users"),
     name: v.string(),
     role: v.string(),
+    grade: v.optional(v.string()),
     email: v.union(v.null(), v.string()),
     image: v.union(v.null(), v.string()),
     createdAt: v.number(),
@@ -107,6 +112,7 @@ export const listProfiles = query({
         userId: entry.userId,
         name: entry.name,
         role: entry.role,
+        grade: entry.grade,
         email: user?.email ?? null,
         image: user?.image ?? null,
         createdAt: user?._creationTime ?? entry._creationTime,

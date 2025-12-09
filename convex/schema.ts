@@ -55,6 +55,7 @@ const applicationTables = {
     userId: v.id("users"),
     name: v.string(),
     role: v.string(),
+    grade: v.optional(v.string()), // Student's grade (Class1-Class12)
   })
     .index("by_user", ["userId"])
     .index("by_role", ["role"]),

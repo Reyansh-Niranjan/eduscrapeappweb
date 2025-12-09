@@ -1,11 +1,10 @@
 import { convexAuth, getAuthUserId, type AuthProviderConfig } from "@convex-dev/auth/server";
 import { Password } from "@convex-dev/auth/providers/Password";
-import { Anonymous } from "@convex-dev/auth/providers/Anonymous";
 import Google from "@auth/core/providers/google";
 import GitHub from "@auth/core/providers/github";
 import { query } from "./_generated/server";
 
-const providers: AuthProviderConfig[] = [Password, Anonymous];
+const providers: AuthProviderConfig[] = [Password];
 
 const googleClientId = process.env.CONVEX_GOOGLE_CLIENT_ID;
 const googleClientSecret = process.env.CONVEX_GOOGLE_CLIENT_SECRET;
