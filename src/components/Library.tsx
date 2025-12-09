@@ -76,10 +76,7 @@ export default function Library() {
   const fetchStructure = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${BASE_URL}/structure.json`, {
-        mode: 'cors',
-        credentials: 'omit'
-      });
+      const response = await fetch(`${BASE_URL}/structure.json`);
       if (!response.ok) throw new Error("Failed to load library structure");
       const data = await response.json();
       console.log("Loaded structure:", data);
@@ -96,10 +93,7 @@ export default function Library() {
   // Fetch zips.json to get list of all ZIP files
   const fetchZipsList = async () => {
     try {
-      const response = await fetch(`${BASE_URL}/zips.json`, {
-        mode: 'cors',
-        credentials: 'omit'
-      });
+      const response = await fetch(`${BASE_URL}/zips.json`);
       if (!response.ok) throw new Error("Failed to load zips list");
       const data = await response.json();
       const paths = data.map((item: any) => item.path);
