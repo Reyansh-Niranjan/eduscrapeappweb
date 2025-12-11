@@ -1,0 +1,24 @@
+# Security Headers Configuration
+# Add these headers to your hosting platform (Vercel, Netlify, etc.)
+
+# Strict-Transport-Security: Force HTTPS
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+
+# X-Content-Type-Options: Prevent MIME sniffing
+X-Content-Type-Options: nosniff
+
+# X-Frame-Options: Prevent clickjacking
+X-Frame-Options: DENY
+
+# X-XSS-Protection: Enable XSS filter
+X-XSS-Protection: 1; mode=block
+
+# Referrer-Policy: Control referrer information
+Referrer-Policy: strict-origin-when-cross-origin
+
+# Permissions-Policy: Control browser features
+Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+# Content-Security-Policy: Restrict resource loading
+# Note: Adjust this based on your actual resource domains
+Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http:; font-src 'self' data:; connect-src 'self' https://*.convex.cloud https://eduscrape-host.web.app wss://*.convex.cloud; frame-src 'self';

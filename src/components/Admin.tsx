@@ -164,8 +164,8 @@ export default function Admin() {
         toast.error(result.message || 'Failed to fetch GitHub releases');
       }
     } catch (error) {
-      toast.error('Failed to fetch GitHub releases');
-      console.error('GitHub releases fetch error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to fetch GitHub releases: ${errorMessage}`);
     }
   };
 

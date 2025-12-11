@@ -37,7 +37,10 @@ export const upsertProfile = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) {
-      throw new Error("Not authenticated");
+      // More detailed error for debugging
+      const identity = await ctx.auth.getUserIdentity();
+      console.error("Auth check failed:", { userId, identity: identity?.subject });
+      throw new Error("Not authenticated. Please sign in again.");
     }
 
     const trimmedName = args.name.trim();

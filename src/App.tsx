@@ -10,13 +10,32 @@ import Dashboard from "./components/Dashboard.tsx";
 import Footer from "./components/Footer";
 import Admin from "./components/Admin";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import ProfileCompletionBanner from "./components/ProfileCompletionBanner";
 import { useEffect, useState } from "react";
 
 type View = "home" | "admin" | "login" | "dashboard";
 
+const getViewFromURL = (): View => {
+  const { pathname, hash, search } = window.location;
+  
+  // Check pathname first
+  if (pathname === "/admin") return "admin";
+  if (pathname === "/dashboard") return "dashboard";
+  
+  // Check hash
+  if (hash === "#admin") return "admin";
+  if (hash === "#login") return "login";
+  if (hash === "#dashboard") return "dashboard";
+  
+  // Check search params
+  const params = new URLSearchParams(search);
+  if (params.get("admin") === "true") return "admin";
+  if (params.get("dashboard") === "true") return "dashboard";
+  
+  return "home";
+};
+
 export default function App() {
-  const [currentView, setCurrentView] = useState<View>("home");
+  const [currentView, setCurrentView] = useState<View>(getViewFromURL);
 
   useEffect(() => {
     document.documentElement.style.scrollBehavior = "smooth";
@@ -27,36 +46,17 @@ export default function App() {
     const shouldBeDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
     document.documentElement.setAttribute('data-theme', shouldBeDark ? 'dark' : 'light');
 
-    const determineView = () => {
-      if (
-        window.location.pathname === "/admin" ||
-        window.location.hash === "#admin" ||
-        window.location.search.includes("admin=true")
-      ) {
-        setCurrentView("admin");
-        return;
-      }
-      if (window.location.hash === "#login") {
-        setCurrentView("login");
-        return;
-      }
-      if (
-        window.location.hash === "#dashboard" ||
-        window.location.pathname === "/dashboard" ||
-        window.location.search.includes("dashboard=true")
-      ) {
-        setCurrentView("dashboard");
-        return;
-      }
-      setCurrentView("home");
+    const handleRouteChange = () => {
+      setCurrentView(getViewFromURL());
     };
 
-    determineView();
+    window.addEventListener("hashchange", handleRouteChange);
+    window.addEventListener("popstate", handleRouteChange);
 
-    const handleHashChange = () => determineView();
-    window.addEventListener("hashchange", handleHashChange);
-
-    return () => window.removeEventListener("hashchange", handleHashChange);
+    return () => {
+      window.removeEventListener("hashchange", handleRouteChange);
+      window.removeEventListener("popstate", handleRouteChange);
+    };
   }, []);
 
   if (currentView === "admin") {
@@ -95,7 +95,6 @@ export default function App() {
         <Header />
 
         <main className="relative">
-          <ProfileCompletionBanner />
           <Hero />
           <About />
           <Projects />

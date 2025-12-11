@@ -3,15 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { toast } from "sonner";
 
-const ROLE_OPTIONS = [
-  "District Admin",
-  "Curriculum Lead",
-  "Teacher",
-  "Technology Lead",
-  "Principal",
-  "Support Staff",
-  "Student",
-];
+
 
 const GRADE_OPTIONS = Array.from({ length: 12 }, (_, i) => `Class${i + 1}`);
 
@@ -26,9 +18,9 @@ export default function ProfileCompletionBanner() {
   const profile = useQuery(api.userProfiles.getMyProfile);
   const upsertProfile = useMutation(api.userProfiles.upsertProfile);
 
-  const [form, setForm] = useState<ProfileState>({ name: "", role: "", grade: "" });
+  const [form, setForm] = useState<ProfileState>({ name: "", role: "student", grade: "" });
   const [saving, setSaving] = useState(false);
-  
+
   // Only show banner if profile is incomplete (missing name or role)
   // Once profile is set, this banner never shows again - users must use Profile Edit page
   const needsProfile = useMemo(() => {
@@ -36,12 +28,12 @@ export default function ProfileCompletionBanner() {
     if (!profile) return true;
     return profile.name.trim().length === 0 || profile.role.trim().length === 0;
   }, [user, profile]);
-  
+
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     if (profile) {
-      setForm({ name: profile.name, role: profile.role, grade: profile.grade || "" });
+      setForm({ name: profile.name, role: profile.role || "student", grade: profile.grade || "" });
       setExpanded(false);
     }
   }, [profile]);
@@ -63,31 +55,38 @@ export default function ProfileCompletionBanner() {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    
+    if (!user) {
+      toast.error("Please wait for authentication to complete.");
+      return;
+    }
+    
     if (form.name.trim().length < 2) {
       toast.error("Please enter your full name.");
       return;
     }
-    if (form.role.trim().length === 0) {
-      toast.error("Please select a role.");
-      return;
-    }
-    if (form.role === "Student" && form.grade.trim().length === 0) {
+
+    if (form.grade.trim().length === 0) {
       toast.error("Please select your grade.");
       return;
     }
 
     setSaving(true);
     try {
-      await upsertProfile({ 
-        name: form.name.trim(), 
-        role: form.role.trim(),
-        grade: form.role === "Student" ? form.grade : undefined
+      await upsertProfile({
+        name: form.name.trim(),
+        role: "student",
+        grade: form.grade
       });
       toast.success("Profile updated");
       setExpanded(false);
     } catch (error) {
-      console.error("Failed to update profile", error);
-      toast.error("We could not update your profile. Please try again.");
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (errorMessage.includes('authenticated')) {
+        toast.error("Session expired. Please refresh and try again.");
+      } else {
+        toast.error(`Could not update profile: ${errorMessage}`);
+      }
     } finally {
       setSaving(false);
     }
@@ -102,8 +101,8 @@ export default function ProfileCompletionBanner() {
               Complete your EduScrapeApp profile
             </h3>
             <p className="text-sm text-gray-300">
-              Set up your profile once - you can update it later from the dashboard. 
-              {form.role === "Student" && " Your grade selection helps us provide the right content for you."}
+              Set up your profile once - you can update it later from the dashboard.
+              Your grade selection helps us provide the right content for you.
             </p>
           </div>
         </div>
@@ -127,54 +126,26 @@ export default function ProfileCompletionBanner() {
 
           <div className="md:col-span-1">
             <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-300">
-              Role
+              Grade
             </label>
             <select
-              value={form.role}
+              value={form.grade}
               onChange={(event) =>
-                setForm((prev) => ({ ...prev, role: event.target.value }))
+                setForm((prev) => ({ ...prev, grade: event.target.value }))
               }
               className="w-full rounded-lg border border-purple-500/40 bg-purple-950/60 px-4 py-2 text-sm text-white outline-none transition focus:border-teal-400 focus:ring-2 focus:ring-teal-500/40"
               required
             >
               <option value="" disabled>
-                Select your role
+                Select your grade
               </option>
-              {ROLE_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
+              {GRADE_OPTIONS.map((grade) => (
+                <option key={grade} value={grade}>
+                  {grade.replace('Class', 'Class ')}
                 </option>
               ))}
-              {!ROLE_OPTIONS.includes(form.role) && form.role.trim().length > 0 && (
-                <option value={form.role}>{form.role}</option>
-              )}
             </select>
           </div>
-
-          {form.role === "Student" && (
-            <div className="md:col-span-2">
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-300">
-                Grade
-              </label>
-              <select
-                value={form.grade}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, grade: event.target.value }))
-                }
-                className="w-full rounded-lg border border-purple-500/40 bg-purple-950/60 px-4 py-2 text-sm text-white outline-none transition focus:border-teal-400 focus:ring-2 focus:ring-teal-500/40"
-                required
-              >
-                <option value="" disabled>
-                  Select your grade
-                </option>
-                {GRADE_OPTIONS.map((grade) => (
-                  <option key={grade} value={grade}>
-                    {grade.replace('Class', 'Class ')}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
 
           <div className="md:col-span-2 flex items-center justify-between">
             <div className="text-xs text-gray-400">

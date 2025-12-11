@@ -1,10 +1,3 @@
-export interface AppError {
-  message: string;
-  code?: string;
-  status?: number;
-  details?: any;
-}
-
 export class AppError extends Error {
   public code?: string;
   public status?: number;

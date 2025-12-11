@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { User, Mail, GraduationCap, Briefcase, Save, X } from "lucide-react";
+import { User, Mail, GraduationCap, Briefcase, Save, X, Edit2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface ProfileEditProps {
@@ -15,66 +15,60 @@ export default function ProfileEdit({ onCancel }: ProfileEditProps) {
 
   const [formData, setFormData] = useState({
     name: "",
-    role: "",
+    role: "student",
     grade: "",
   });
+  const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (profile) {
       setFormData({
-        name: profile.name || "",
-        role: profile.role || "",
-        grade: profile.grade || "",
+        name: profile.name ?? "",
+        role: "student", // Force role to student
+        grade: profile.grade ?? "Class1", // Default grade to Class1
       });
     }
   }, [profile]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    if (!user) {
+      toast.error("Please wait for authentication to complete.");
+      return;
+    }
+
     if (!formData.name.trim()) {
       toast.error("Name is required");
       return;
     }
 
-    if (!formData.role.trim()) {
-      toast.error("Role is required");
-      return;
-    }
-
-    if (formData.role === "student" && !formData.grade) {
-      toast.error("Grade is required for students");
-      return;
-    }
+    // Default to Class1 if somehow empty, though initialization handles it.
+    const gradeToSubmit = formData.grade || "Class1";
 
     setIsSubmitting(true);
 
     try {
       await upsertProfile({
         name: formData.name.trim(),
-        role: formData.role,
-        grade: formData.role === "student" ? formData.grade : undefined,
+        role: "student", // Force role to student
+        grade: gradeToSubmit,
       });
 
       toast.success("Profile updated successfully!");
-      if (onCancel) {
-        onCancel();
-      }
+      setIsEditing(false);
+      // Don't call onCancel here - just stay in view mode
     } catch (error) {
-      console.error("Failed to update profile:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to update profile");
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update profile';
+      if (errorMessage.includes('authenticated')) {
+        toast.error("Session expired. Please sign in again.");
+      } else {
+        toast.error(errorMessage);
+      }
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleRoleChange = (newRole: string) => {
-    setFormData({
-      ...formData,
-      role: newRole,
-      grade: newRole !== "student" ? "" : formData.grade,
-    });
   };
 
   // Show loading only if we're still fetching (undefined), not if profile doesn't exist (null)
@@ -96,18 +90,32 @@ export default function ProfileEdit({ onCancel }: ProfileEditProps) {
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Edit Profile</h1>
-              <p className="text-gray-600 mt-2">Update your personal information</p>
+              <h1 className="text-3xl font-bold text-gray-900">Profile</h1>
+              <p className="text-gray-600 mt-2">
+                {isEditing ? "Update your personal information" : "View your profile details"}
+              </p>
             </div>
-            {onCancel && (
-              <button
-                onClick={onCancel}
-                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition"
-                title="Cancel"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {!isEditing && (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+                  title="Edit Profile"
+                >
+                  <Edit2 className="h-4 w-4" />
+                  Edit
+                </button>
+              )}
+              {onCancel && (
+                <button
+                  onClick={onCancel}
+                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition"
+                  title="Cancel"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -126,55 +134,68 @@ export default function ProfileEdit({ onCancel }: ProfileEditProps) {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Name Field */}
-            <div>
-              <label htmlFor="name" className="block text-sm font-semibold text-gray-900 mb-2">
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-purple-600" />
-                  Full Name *
+          {!isEditing ? (
+            /* View Mode - Display Profile Info */
+            <div className="space-y-6">
+              {/* Name Display */}
+              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="flex items-center gap-3 mb-2">
+                  <User className="h-5 w-5 text-purple-600" />
+                  <span className="text-sm font-semibold text-gray-700">Full Name</span>
                 </div>
-              </label>
-              <input
-                type="text"
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-                placeholder="Enter your full name"
-                required
-                minLength={2}
-              />
-              <p className="mt-1 text-xs text-gray-500">This name will be displayed across the platform</p>
-            </div>
+                <p className="text-lg font-medium text-gray-900 ml-8">
+                  {formData.name || "Not set"}
+                </p>
+              </div>
 
-            {/* Role Field */}
-            <div>
-              <label htmlFor="role" className="block text-sm font-semibold text-gray-900 mb-2">
-                <div className="flex items-center gap-2">
-                  <Briefcase className="h-4 w-4 text-purple-600" />
-                  Role *
+              {/* Grade Display */}
+              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="flex items-center gap-3 mb-2">
+                  <GraduationCap className="h-5 w-5 text-purple-600" />
+                  <span className="text-sm font-semibold text-gray-700">Grade/Class</span>
                 </div>
-              </label>
-              <select
-                id="role"
-                value={formData.role}
-                onChange={(e) => handleRoleChange(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-                required
-              >
-                <option value="">Select your role</option>
-                <option value="student">Student</option>
-                <option value="teacher">Teacher</option>
-                <option value="parent">Parent</option>
-                <option value="administrator">Administrator</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
+                <p className="text-lg font-medium text-gray-900 ml-8">
+                  {formData.grade ? formData.grade.replace('Class', 'Class ') : "Not set"}
+                </p>
+              </div>
 
-            {/* Grade Field (Only for Students) */}
-            {formData.role === "student" && (
-              <div className="animate-fadeIn">
+              {/* Role Display */}
+              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="flex items-center gap-3 mb-2">
+                  <Briefcase className="h-5 w-5 text-purple-600" />
+                  <span className="text-sm font-semibold text-gray-700">Role</span>
+                </div>
+                <p className="text-lg font-medium text-gray-900 ml-8 capitalize">
+                  {formData.role}
+                </p>
+              </div>
+            </div>
+          ) : (
+            /* Edit Mode - Editable Form */
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Name Field */}
+              <div>
+                <label htmlFor="name" className="block text-sm font-semibold text-gray-900 mb-2">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-purple-600" />
+                    Full Name *
+                  </div>
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                  placeholder="Enter your full name"
+                  required
+                  minLength={2}
+                />
+                <p className="mt-1 text-xs text-gray-500">This name will be displayed across the platform</p>
+              </div>
+
+              {/* Grade Field */}
+              <div>
                 <label htmlFor="grade" className="block text-sm font-semibold text-gray-900 mb-2">
                   <div className="flex items-center gap-2">
                     <GraduationCap className="h-4 w-4 text-purple-600" />
@@ -196,40 +217,48 @@ export default function ProfileEdit({ onCancel }: ProfileEditProps) {
                   ))}
                 </select>
               </div>
-            )}
 
-            {/* Action Buttons */}
-            <div className="flex gap-4 pt-4">
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="flex-1 flex items-center justify-center gap-2 bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-              >
-                {isSubmitting ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-5 w-5" />
-                    Save Changes
-                  </>
-                )}
-              </button>
+              {/* Action Buttons */}
+              <div className="flex gap-4 pt-4">
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 flex items-center justify-center gap-2 bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-5 w-5" />
+                      Save Changes
+                    </>
+                  )}
+                </button>
 
-              {onCancel && (
                 <button
                   type="button"
-                  onClick={onCancel}
+                  onClick={() => {
+                    setIsEditing(false);
+                    // Reset form to original values
+                    if (profile) {
+                      setFormData({
+                        name: profile.name ?? "",
+                        role: "student",
+                        grade: profile.grade ?? "Class1",
+                      });
+                    }
+                  }}
                   disabled={isSubmitting}
                   className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:border-purple-500 hover:text-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                   Cancel
                 </button>
-              )}
-            </div>
-          </form>
+              </div>
+            </form>
+          )}
         </div>
 
         {/* Info Card */}
@@ -244,7 +273,7 @@ export default function ProfileEdit({ onCancel }: ProfileEditProps) {
               <h3 className="text-sm font-semibold text-blue-900">Profile Information</h3>
               <p className="text-sm text-blue-800 mt-1">
                 Your profile information helps us personalize your experience and provide relevant content.
-                {formData.role === "student" && " As a student, your grade determines which materials you can access in the library."}
+                Your grade determines which materials you can access in the library.
               </p>
             </div>
           </div>

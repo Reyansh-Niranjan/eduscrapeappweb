@@ -31,8 +31,8 @@ export function SignInForm({ onSuccess, redirectHash = "#dashboard" }: SignInFor
       onSuccess?.();
       toast.success(`Redirecting to ${provider}...`);
     } catch (error) {
-      console.error(`[auth] ${provider} sign-in failed`, error);
-      toast.error(`Could not sign in with ${provider}. Please try again.`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Could not sign in with ${provider}. ${errorMessage}`);
       setSubmitting(false);
     }
   };
@@ -51,9 +51,10 @@ export function SignInForm({ onSuccess, redirectHash = "#dashboard" }: SignInFor
             await signIn("password", formData);
             window.location.hash = redirectHash;
             onSuccess?.();
-          } catch (error: any) {
+          } catch (error) {
             let toastTitle = "";
-            if (error.message?.includes("Invalid password")) {
+            const errorMessage = error instanceof Error ? error.message : '';
+            if (errorMessage.includes("Invalid password")) {
               toastTitle = "Invalid password. Please try again.";
             } else {
               toastTitle =
@@ -84,7 +85,7 @@ export function SignInForm({ onSuccess, redirectHash = "#dashboard" }: SignInFor
         <button className="auth-button" type="submit" disabled={submitting}>
           {flow === "signIn" ? "Sign in" : "Sign up"}
         </button>
-        <div className="text-center text-sm" style={{ color: '#ffffff' }}>
+        <div className="text-center text-sm" style={{ color: 'var(--theme-text)' }}>
           <span>
             {flow === "signIn"
               ? "Don't have an account? "

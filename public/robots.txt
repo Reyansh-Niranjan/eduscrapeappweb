@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+
+# Disallow admin and dashboard pages from being indexed
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /#admin
+Disallow: /#dashboard
+Disallow: /#login
+
+# Sitemap location
+Sitemap: https://eduscrapeappweb.vercel.app/sitemap.xml

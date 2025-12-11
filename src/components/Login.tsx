@@ -1,4 +1,5 @@
 import { SignInForm } from "../SignInForm";
+import ThemeToggle from "./ThemeToggle";
 
 interface LoginProps {
   onSuccess: () => void;
@@ -31,7 +32,7 @@ export default function Login({ onSuccess, onCancel }: LoginProps) {
           </p>
         </div>
 
-        <div className="mb-6">
+        <div className="mb-6 flex items-center justify-between">
           <button
             type="button"
             onClick={onCancel}
@@ -44,6 +45,7 @@ export default function Login({ onSuccess, onCancel }: LoginProps) {
           >
             ← Back to site
           </button>
+          <ThemeToggle />
         </div>
 
         <div

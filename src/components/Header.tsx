@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import ThemeToggle from './ThemeToggle';
 
 export default function Header() {
@@ -9,22 +9,22 @@ export default function Header() {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
     };
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const scrollToSection = (sectionId: string) => {
+  const scrollToSection = useCallback((sectionId: string) => {
     const element = document.getElementById(sectionId);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
       setIsMobileMenuOpen(false);
     }
-  };
+  }, []);
 
-  const navigateToHash = (hash: string) => {
+  const navigateToHash = useCallback((hash: string) => {
     window.location.hash = hash;
     setIsMobileMenuOpen(false);
-  };
+  }, []);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 transition-all duration-300" style={{ background: isScrolled ? 'var(--theme-nav-bg)' : 'rgba(var(--theme-nav-bg), 0.95)', borderBottom: isScrolled ? '1px solid var(--theme-border)' : 'none', boxShadow: isScrolled ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', backdropFilter: 'blur(8px)' }}>
