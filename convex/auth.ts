@@ -6,6 +6,12 @@ import { query } from "./_generated/server";
 
 const providers: AuthProviderConfig[] = [Password];
 
+if (process.env.CONVEX_SITE_URL === undefined) {
+  console.error("Missing CONVEX_SITE_URL environment variable");
+  // Throwing might break deployment if not careful, but for auth to work it is critical.
+  // However, let's just log loudly for now or throw if we are sure.
+}
+
 const googleClientId = process.env.CONVEX_GOOGLE_CLIENT_ID;
 const googleClientSecret = process.env.CONVEX_GOOGLE_CLIENT_SECRET;
 if (googleClientId && googleClientSecret) {
