@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Bot, Send, X, Loader2, Sparkles } from 'lucide-react';
-import { useAction, useQuery } from 'convex/react';
+import { useAction } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 
 interface Message {
@@ -100,7 +100,7 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      void handleSend();
     }
   };
 
@@ -216,7 +216,7 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <button
-                onClick={handleSend}
+                onClick={() => void handleSend()}
                 disabled={!input.trim() || isLoading}
                 className="p-2 bg-gradient-to-r from-purple-600 to-teal-500 text-white rounded-xl hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
                 aria-label="Send message"

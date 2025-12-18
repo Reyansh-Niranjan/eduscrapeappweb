@@ -234,7 +234,8 @@ export default function Library({ bookToOpen }: LibraryProps) {
       const chunks: Uint8Array[] = [];
       let receivedLength = 0;
 
-      try {) {
+      try {
+        while (true) {
           const { done, value } = await reader.read();
           if (done) break;
           

@@ -172,7 +172,7 @@ export default function ProfileEdit({ onCancel }: ProfileEditProps) {
             </div>
           ) : (
             /* Edit Mode - Editable Form */
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={(e) => void handleSubmit(e)} className="space-y-6">
               {/* Name Field */}
               <div>
                 <label htmlFor="name" className="block text-sm font-semibold text-gray-900 mb-2">

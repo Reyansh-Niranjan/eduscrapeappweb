@@ -88,7 +88,7 @@ export default function Updates() {
         </div>
 
         <div className="max-w-4xl mx-auto space-y-8">
-          {displayUpdates.map((update, index) => (
+          {displayUpdates.map((update) => (
             <div
               key={update._id}
               className="group bg-gradient-to-br from-purple-800/20 to-teal-800/20 backdrop-blur-sm border border-purple-500/30 rounded-2xl p-6 hover:border-teal-400/50 transition-all duration-300"

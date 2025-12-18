@@ -77,7 +77,7 @@ export default function Admin() {
       } else {
         toast.error('Invalid password');
       }
-    } catch (error) {
+    } catch {
       toast.error('Login failed. Please try again.');
     } finally {
       setIsLoading(false);
@@ -94,7 +94,7 @@ export default function Admin() {
       });
       toast.success('Update created successfully');
       setUpdateForm({ title: '', content: '', type: 'device_update', imageUrl: '' });
-    } catch (error) {
+    } catch {
       toast.error('Failed to create update');
     }
   };
@@ -121,7 +121,7 @@ export default function Admin() {
         videoUrl: '',
         featured: false,
       });
-    } catch (error) {
+    } catch {
       toast.error('Failed to create project');
     }
   };
@@ -144,7 +144,7 @@ export default function Admin() {
         imageUrl: '',
         order: 1,
       });
-    } catch (error) {
+    } catch {
       toast.error('Failed to create team member');
     }
   };
@@ -178,7 +178,7 @@ export default function Admin() {
         featured: githubSyncForm.featured,
       });
       toast.success(result.message);
-    } catch (error) {
+    } catch {
       toast.error('Failed to sync project from GitHub');
     }
   };
@@ -197,7 +197,7 @@ export default function Admin() {
             <p className="text-gray-300">Enter password to access admin panel</p>
           </div>
 
-          <form onSubmit={handleLogin}>
+          <form onSubmit={(e) => void handleLogin(e)}>
             <div className="mb-6">
               <input
                 type="password"
@@ -296,7 +296,7 @@ export default function Admin() {
               {/* Fetch Releases */}
               <div>
                 <h3 className="text-lg font-semibold text-white mb-4">Fetch Releases</h3>
-                <form onSubmit={handleFetchGitHubReleases} className="space-y-4">
+                <form onSubmit={(e) => void handleFetchGitHubReleases(e)} className="space-y-4">
                   <input
                     type="text"
                     value={githubForm.owner}
@@ -325,7 +325,7 @@ export default function Admin() {
               {/* Sync Project */}
               <div>
                 <h3 className="text-lg font-semibold text-white mb-4">Sync Project</h3>
-                <form onSubmit={handleSyncProject} className="space-y-4">
+                <form onSubmit={(e) => void handleSyncProject(e)} className="space-y-4">
                   <input
                     type="text"
                     value={githubSyncForm.owner}
@@ -365,7 +365,7 @@ export default function Admin() {
           {/* Create Update */}
           <div className="bg-gradient-to-br from-purple-800/20 to-teal-800/20 backdrop-blur-sm border border-purple-500/30 rounded-2xl p-6">
             <h2 className="text-2xl font-bold text-white mb-6">📢 Create Update</h2>
-            <form onSubmit={handleCreateUpdate} className="space-y-4">
+            <form onSubmit={(e) => void handleCreateUpdate(e)} className="space-y-4">
               <input
                 type="text"
                 value={updateForm.title}
@@ -401,7 +401,7 @@ export default function Admin() {
           {/* Create Project */}
           <div className="bg-gradient-to-br from-purple-800/20 to-teal-800/20 backdrop-blur-sm border border-purple-500/30 rounded-2xl p-6">
             <h2 className="text-2xl font-bold text-white mb-6">🚀 Create Project</h2>
-            <form onSubmit={handleCreateProject} className="space-y-4">
+            <form onSubmit={(e) => void handleCreateProject(e)} className="space-y-4">
               <input
                 type="text"
                 value={projectForm.name}
@@ -455,7 +455,7 @@ export default function Admin() {
           {/* Create Team Member */}
           <div className="bg-gradient-to-br from-purple-800/20 to-teal-800/20 backdrop-blur-sm border border-purple-500/30 rounded-2xl p-6">
             <h2 className="text-2xl font-bold text-white mb-6">👥 Create Team Member</h2>
-            <form onSubmit={handleCreateTeamMember} className="space-y-4">
+            <form onSubmit={(e) => void handleCreateTeamMember(e)} className="space-y-4">
               <input
                 type="text"
                 value={teamForm.name}

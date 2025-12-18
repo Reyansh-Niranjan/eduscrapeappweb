@@ -19,8 +19,8 @@ interface FolderBrowserProps {
   currentItems: BrowserItem[];
   baseUrl: string;
   onFolderClick: (folderName: string) => void;
-  onZipSelect: (zipInfo: ZipInfo) => void;
-  onPdfClick: (pdfName: string, pdfUrl: string) => void;
+  onZipSelect: (zipInfo: ZipInfo) => void | Promise<void>;
+  onPdfClick: (pdfName: string, pdfUrl: string) => void | Promise<void>;
   onGoBack: () => void;
 }
 
@@ -91,7 +91,7 @@ export default function FolderBrowser({
             return (
               <button
                 key={`zip-${index}`}
-                onClick={() => onZipSelect(zipInfo)}
+                onClick={() => void onZipSelect(zipInfo)}
                 className="flex items-center gap-3 p-4 border-2 border-blue-200 bg-blue-50 rounded-lg hover:border-blue-400 hover:shadow-md transition text-left group"
               >
                 <FileArchive className="h-10 w-10 text-blue-600 flex-shrink-0 group-hover:scale-110 transition-transform" />
@@ -109,7 +109,7 @@ export default function FolderBrowser({
             return (
               <button
                 key={`pdf-${index}`}
-                onClick={() => onPdfClick(item.name, pdfUrl)}
+                onClick={() => void onPdfClick(item.name, pdfUrl)}
                 className="flex items-center gap-3 p-4 border-2 border-orange-200 bg-orange-50 rounded-lg hover:border-orange-400 hover:shadow-md transition text-left group"
               >
                 <FileText className="h-10 w-10 text-orange-600 flex-shrink-0 group-hover:scale-110 transition-transform" />

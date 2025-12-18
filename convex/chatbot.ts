@@ -14,11 +14,6 @@ interface FirebaseStructure {
   [key: string]: FolderContent;
 }
 
-interface SearchResult {
-  title: string;
-  path: string;
-}
-
 // Define tool types
 const toolDefinitions = [
   {
@@ -398,7 +393,7 @@ export const sendChatMessage = action({
       let data: any;
       try {
         data = JSON.parse(textBody);
-      } catch (parseError) {
+      } catch {
         throw new Error("Invalid response from OpenRouter");
       }
 
@@ -603,7 +598,7 @@ export const clearChatHistory = action({
         success: true,
         message: "Chat history cleared successfully",
       };
-    } catch (error) {
+    } catch {
       return {
         success: false,
         message: "Failed to clear chat history",

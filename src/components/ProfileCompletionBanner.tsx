@@ -29,7 +29,7 @@ export default function ProfileCompletionBanner() {
     return profile.name.trim().length === 0 || profile.role.trim().length === 0;
   }, [user, profile]);
 
-  const [expanded, setExpanded] = useState(false);
+  const [_expanded, _setExpanded] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -107,7 +107,7 @@ export default function ProfileCompletionBanner() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-6 grid gap-4 md:grid-cols-2">
+        <form onSubmit={(e) => void handleSubmit(e)} className="mt-6 grid gap-4 md:grid-cols-2">
           <div className="md:col-span-1">
             <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-300">
               Name

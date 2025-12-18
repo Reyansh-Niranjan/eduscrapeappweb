@@ -65,7 +65,7 @@ export default function Library({ bookToOpen }: LibraryProps) {
 
   // Load structure on mount
   useEffect(() => {
-    fetchStructure();
+    void fetchStructure();
   }, []);
 
   // Auto-navigate to user's grade when structure loads
@@ -73,7 +73,7 @@ export default function Library({ bookToOpen }: LibraryProps) {
     if (structure && userGrade && currentPath.length === 0 && structure[userGrade]) {
       navigateToFolder([userGrade]);
     }
-  }, [structure, userGrade, currentPath.length]);
+  }, [structure, userGrade, currentPath.length, navigateToFolder]);
 
   // Handle AI-triggered book opening
   useEffect(() => {
@@ -87,11 +87,11 @@ export default function Library({ bookToOpen }: LibraryProps) {
         const bookName = pathParts[pathParts.length - 1];
         const zipUrl = `${BASE_URL}/${bookToOpen.path}`;
         setTimeout(() => {
-          handleZipSelect({ name: bookName, path: bookToOpen.path, url: zipUrl });
+          void handleZipSelect({ name: bookName, path: bookToOpen.path, url: zipUrl });
         }, 500);
       }
     }
-  }, [bookToOpen, structure]);
+  }, [bookToOpen, structure, navigateToFolder, handleZipSelect]);
 
   const fetchStructure = async () => {
     try {
@@ -149,7 +149,7 @@ export default function Library({ bookToOpen }: LibraryProps) {
     setSelectedPdf(null);
   }, [structure]);
 
-  const handleZipSelect = async (zipInfo: ZipInfo) => {
+  const handleZipSelect = useCallback(async (zipInfo: ZipInfo) => {
     try {
       setLoading(true);
       setError(null);
@@ -225,7 +225,7 @@ export default function Library({ bookToOpen }: LibraryProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const handlePdfView = (pdf: PDFFile) => {
     setViewerError(null);
@@ -271,7 +271,7 @@ export default function Library({ bookToOpen }: LibraryProps) {
       setNumPages(null);
       setPageNumber(1);
       setSelectedPdf({ name: pdfName, url, blob });
-    } catch (err) {
+    } catch {
       setError("Failed to load PDF");
     }
   };
@@ -424,7 +424,7 @@ export default function Library({ bookToOpen }: LibraryProps) {
             if (folderPath.length > 0) navigateToFolder(folderPath);
             const bookName = pathParts[pathParts.length - 1];
             const zipUrl = `${BASE_URL}/${book.path}`;
-            handleZipSelect({ name: bookName, path: book.path, url: zipUrl });
+            void handleZipSelect({ name: bookName, path: book.path, url: zipUrl });
           }
         }}
       />

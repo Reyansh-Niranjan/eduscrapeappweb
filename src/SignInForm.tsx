@@ -41,31 +41,33 @@ export function SignInForm({ onSuccess, redirectHash = "#dashboard" }: SignInFor
     <div className="w-full">
       <form
         className="flex flex-col gap-form-field"
-        onSubmit={async (e) => {
+        onSubmit={(e) => {
           e.preventDefault();
-          setSubmitting(true);
-          const form = e.target as HTMLFormElement;
-          const formData = new FormData(form);
-          formData.set("flow", flow);
-          try {
-            await signIn("password", formData);
-            window.location.hash = redirectHash;
-            onSuccess?.();
-          } catch (error) {
-            let toastTitle = "";
-            const errorMessage = error instanceof Error ? error.message : '';
-            if (errorMessage.includes("Invalid password")) {
-              toastTitle = "Invalid password. Please try again.";
-            } else {
-              toastTitle =
-                flow === "signIn"
-                  ? "Could not sign in, did you mean to sign up?"
-                  : "Could not sign up, did you mean to sign in?";
+          void (async () => {
+            setSubmitting(true);
+            const form = e.target as HTMLFormElement;
+            const formData = new FormData(form);
+            formData.set("flow", flow);
+            try {
+              await signIn("password", formData);
+              window.location.hash = redirectHash;
+              onSuccess?.();
+            } catch (error) {
+              let toastTitle = "";
+              const errorMessage = error instanceof Error ? error.message : '';
+              if (errorMessage.includes("Invalid password")) {
+                toastTitle = "Invalid password. Please try again.";
+              } else {
+                toastTitle =
+                  flow === "signIn"
+                    ? "Could not sign in, did you mean to sign up?"
+                    : "Could not sign up, did you mean to sign in?";
+              }
+              toast.error(toastTitle);
+              setSubmitting(false);
+              return;
             }
-            toast.error(toastTitle);
-            setSubmitting(false);
-            return;
-          }
+          })();
         }}
       >
         <input
@@ -112,7 +114,7 @@ export function SignInForm({ onSuccess, redirectHash = "#dashboard" }: SignInFor
           <button
             key={provider.id}
             className="auth-button flex items-center justify-center gap-2"
-            onClick={() => handleOAuth(provider.id)}
+            onClick={() => void handleOAuth(provider.id)}
             disabled={submitting}
             type="button"
           >

@@ -12,7 +12,7 @@ interface ChatPanelProps {
     timestamp: number;
   }>;
   isLoading: boolean;
-  onSendMessage: (message: string) => void;
+  onSendMessage: (message: string) => void | Promise<void>;
 }
 
 export default function ChatPanel({ isOpen, onClose, messages, isLoading, onSendMessage }: ChatPanelProps) {
@@ -30,7 +30,7 @@ export default function ChatPanel({ isOpen, onClose, messages, isLoading, onSend
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputMessage.trim() && !isLoading) {
-      onSendMessage(inputMessage.trim());
+      void onSendMessage(inputMessage.trim());
       setInputMessage('');
     }
   };

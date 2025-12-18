@@ -98,7 +98,7 @@ export default function PDFViewer({
             onLoadSuccess={({ numPages: loadedPages }) => {
               onLoadSuccess(loadedPages);
             }}
-            onLoadError={(err) => {
+            onLoadError={(_err) => {
               onLoadError("Could not render this PDF. Try download/new tab.");
             }}
             loading={<div className="text-center text-gray-300 py-6">Loading PDF...</div>}
