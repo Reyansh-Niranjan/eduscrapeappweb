@@ -29,7 +29,7 @@ export default function ProfileCompletionBanner() {
     return profile.name.trim().length === 0 || profile.role.trim().length === 0;
   }, [user, profile]);
 
-  const [_expanded, _setExpanded] = useState(false);
+  const [_expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     if (profile) {
