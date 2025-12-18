@@ -29,20 +29,11 @@ export default function ProfileCompletionBanner() {
     return profile.name.trim().length === 0 || profile.role.trim().length === 0;
   }, [user, profile]);
 
-  const [_expanded, setExpanded] = useState(false);
-
   useEffect(() => {
     if (profile) {
       setForm({ name: profile.name, role: profile.role || "student", grade: profile.grade || "" });
-      setExpanded(false);
     }
   }, [profile]);
-
-  useEffect(() => {
-    if (needsProfile) {
-      setExpanded(true);
-    }
-  }, [needsProfile]);
 
   if (!user) {
     return null;
@@ -79,7 +70,6 @@ export default function ProfileCompletionBanner() {
         grade: form.grade
       });
       toast.success("Profile updated");
-      setExpanded(false);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       if (errorMessage.includes('authenticated')) {

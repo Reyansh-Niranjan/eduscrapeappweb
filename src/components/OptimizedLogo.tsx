@@ -19,7 +19,6 @@ export default function OptimizedLogo({
 }: OptimizedLogoProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
-  const [imageSrc, _setImageSrc] = useState(src);
 
   useEffect(() => {
     // Preload the image
@@ -39,7 +38,7 @@ export default function OptimizedLogo({
 
   return (
     <img
-      src={imageSrc}
+      src={src}
       alt={alt}
       className={`${className} optimized-logo`}
       width={width}
