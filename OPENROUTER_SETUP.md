@@ -24,11 +24,12 @@ You need to add the OPENROUTER_API_KEY to your Convex environment.
 
 ## Model Used
 
-The AI assistant uses: **amazon/nova-2-lite-v1:free**
-- Free tier model from Amazon
+The AI assistant uses: **meta-llama/llama-3.2-3b-instruct:free**
+- Free tier model from Meta
 - No credits required
 - Fast response times
 - Good for educational assistance
+- Supports function calling (tools)
 
 ## Features Implemented
 
@@ -96,7 +97,7 @@ The AI knows:
 
 ## Technical Details
 
-- **Model**: amazon/nova-2-lite-v1:free
+- **Model**: meta-llama/llama-3.2-3b-instruct:free
 - **Tool Support**: Function calling with 3 custom tools
 - **Context Window**: Maintains last 6 messages for conversation
 - **Response Time**: ~2-3 seconds per query
