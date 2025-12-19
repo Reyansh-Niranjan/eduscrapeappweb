@@ -344,7 +344,7 @@ export const sendChatMessage = action({
         throw new Error("OpenRouter API key is not configured. Add OPENROUTER_API_KEY in the Convex dashboard.");
       }
 
-      const model = "amazon/nova-2-lite-v1:free";
+      const model = "nvidia/nemotron-nano-12b-v2-vl:free";
 
       // Get recent chat history
       const history = await ctx.runQuery(api.chatbot.getChatHistory, { sessionId: args.sessionId });
