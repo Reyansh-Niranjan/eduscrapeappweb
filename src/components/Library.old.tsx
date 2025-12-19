@@ -234,7 +234,8 @@ export default function Library({ bookToOpen }: LibraryProps) {
       const chunks: Uint8Array[] = [];
       let receivedLength = 0;
 
-      try {) {
+      try {
+        while (true) {
           const { done, value } = await reader.read();
           if (done) break;
           
@@ -707,7 +708,7 @@ export default function Library({ bookToOpen }: LibraryProps) {
         userContext={{
           grade: userGrade,
           currentPage: "library",
-          currentBook: selectedPdf?.name || selectedZip?.name,
+          currentBook: selectedZip?.name,
           currentFolder: currentPath.join('/'),
         }}
         onBookOpen={(book) => {

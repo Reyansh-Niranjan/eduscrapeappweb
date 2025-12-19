@@ -414,7 +414,7 @@ export default function Library({ bookToOpen }: LibraryProps) {
         userContext={{
           grade: userGrade,
           currentPage: "library",
-          currentBook: selectedPdf?.name || selectedZip?.name,
+          currentBook: selectedZip?.name,
           currentFolder: currentPath.join('/'),
         }}
         onBookOpen={(book) => {
