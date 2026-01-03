@@ -1,7 +1,18 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Bot, Send, X, Loader2, Sparkles } from 'lucide-react';
-import { useAction, useQuery } from 'convex/react';
+import { useAction } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import AlsomConnectionModal from './AlsomConnectionModal';
+import AlsomAuthModal from './AlsomAuthModal';
+import { supabase } from '../lib/supabase';
+import { 
+  sendAlsomMessage, 
+  buildAlsomRequest, 
+  createAlsomSessionId,
+  EDUSCRAPE_SYSTEM_PROMPT,
+  type AlsomMessage 
+} from '../lib/alsomApi';
+import type { Session } from '@supabase/supabase-js';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -26,23 +37,174 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  
+  // Alsom connection state
+  const [showConnectionModal, setShowConnectionModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [alsomSession, setAlsomSession] = useState<Session | null>(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
+  // Convex action for fallback (non-authenticated)
   const sendMessageAction = useAction(api.chatbot.sendChatMessage);
-  const sessionId = useRef(`ai_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  
+  // Session IDs for both Convex and Alsom
+  // Use crypto.randomUUID if available for better security
+  const convexSessionId = useRef(
+    typeof crypto !== 'undefined' && crypto.randomUUID 
+      ? `ai_${crypto.randomUUID()}` 
+      : `ai_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
+  );
+  const alsomSessionId = useRef(createAlsomSessionId());
+  
+  // Track conversation history for Alsom API
+  const alsomConversationHistory = useRef<AlsomMessage[]>([]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  // Check for existing Alsom session on mount
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setAlsomSession(session);
+      } catch (error) {
+        console.error('[AIAssistant] Error checking session:', error);
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+    checkSession();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAlsomSession(session);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && alsomSession) {
       inputRef.current?.focus();
     }
-  }, [isOpen]);
+  }, [isOpen, alsomSession]);
+
+  // Handle chat button click
+  const handleChatButtonClick = () => {
+    if (alsomSession) {
+      // Already authenticated, open chat directly
+      setIsOpen(true);
+    } else {
+      // Not authenticated, show connection modal
+      setShowConnectionModal(true);
+    }
+  };
+
+  // Handle connection modal "Connect" button
+  const handleConnect = () => {
+    setShowConnectionModal(false);
+    setShowAuthModal(true);
+  };
+
+  // Handle successful Alsom authentication
+  const handleAuthSuccess = useCallback((session: Session) => {
+    setAlsomSession(session);
+    setShowAuthModal(false);
+    setIsOpen(true);
+  }, []);
+
+  // Handle sign out from Alsom
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      setAlsomSession(null);
+      setIsOpen(false);
+      setMessages([]);
+      // Reset Alsom conversation history
+      alsomConversationHistory.current = [];
+      alsomSessionId.current = createAlsomSessionId();
+    } catch (error) {
+      console.error('[AIAssistant] Error signing out:', error);
+    }
+  };
+
+  // Send message via Alsom API (for authenticated users)
+  const sendViaAlsom = async (messageContent: string): Promise<{ success: boolean; response?: string; error?: string }> => {
+    if (!alsomSession?.user?.id) {
+      return { success: false, error: 'Not authenticated with Alsom' };
+    }
+
+    // Add user message to conversation history
+    const userMsg: AlsomMessage = {
+      role: 'user',
+      content: messageContent,
+    };
+    alsomConversationHistory.current.push(userMsg);
+
+    // Build context-aware system prompt
+    let systemPrompt = EDUSCRAPE_SYSTEM_PROMPT;
+    if (userContext?.grade) {
+      systemPrompt += `\n\nUser Context: The user is in Grade ${userContext.grade}.`;
+    }
+    if (userContext?.currentPage) {
+      systemPrompt += ` Currently viewing: ${userContext.currentPage}`;
+    }
+
+    // Build and send request
+    const request = buildAlsomRequest(
+      alsomSession.user.id,
+      alsomSessionId.current,
+      alsomConversationHistory.current,
+      {
+        systemPrompt,
+        tools: ['time', 'websearch'],
+        addTools: false,
+      }
+    );
+
+    const response = await sendAlsomMessage(request);
+
+    if (response.error) {
+      // Remove the failed message from history (only if it's the message we just added)
+      const lastMsg = alsomConversationHistory.current[alsomConversationHistory.current.length - 1];
+      if (lastMsg && lastMsg.role === 'user' && lastMsg.content === messageContent) {
+        alsomConversationHistory.current.pop();
+      }
+      return { success: false, error: response.error };
+    }
+
+    // Add assistant response to conversation history
+    alsomConversationHistory.current.push({
+      role: 'assistant',
+      content: response.reply,
+    });
+
+    return { success: true, response: response.reply };
+  };
+
+  // Send message via Convex (fallback for non-authenticated)
+  const sendViaConvex = async (messageContent: string): Promise<{ success: boolean; response?: string; error?: string; bookToOpen?: { path: string; name: string } }> => {
+    const result = await sendMessageAction({
+      sessionId: convexSessionId.current,
+      message: messageContent,
+      userContext,
+    });
+
+    return {
+      success: result.success,
+      response: result.response,
+      error: result.error,
+      bookToOpen: result.bookToOpen,
+    };
+  };
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -58,11 +220,10 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
     setIsLoading(true);
 
     try {
-      const result = await sendMessageAction({
-        sessionId: sessionId.current,
-        message: userMessage.content,
-        userContext,
-      });
+      // Use Alsom API if authenticated, otherwise fall back to Convex
+      const result = alsomSession 
+        ? await sendViaAlsom(userMessage.content)
+        : await sendViaConvex(userMessage.content);
 
       if (result.success && result.response) {
         const assistantMessage: Message = {
@@ -72,8 +233,8 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
         };
         setMessages(prev => [...prev, assistantMessage]);
 
-        // Handle book opening
-        if (result.bookToOpen && onBookOpen) {
+        // Handle book opening (only from Convex)
+        if ('bookToOpen' in result && result.bookToOpen && onBookOpen) {
           onBookOpen(result.bookToOpen);
         }
       } else {
@@ -106,11 +267,26 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
 
   return (
     <>
+      {/* Alsom Connection Modal */}
+      <AlsomConnectionModal
+        isOpen={showConnectionModal}
+        onClose={() => setShowConnectionModal(false)}
+        onConnect={handleConnect}
+      />
+
+      {/* Alsom Auth Modal */}
+      <AlsomAuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onAuthSuccess={handleAuthSuccess}
+      />
+
       {/* Floating Button */}
       {!isOpen && (
         <button
-          onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 to-teal-500 text-white shadow-lg hover:shadow-xl transition-all hover:scale-110"
+          onClick={handleChatButtonClick}
+          disabled={isCheckingAuth}
+          className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 to-teal-500 text-white shadow-lg hover:shadow-xl transition-all hover:scale-110 disabled:opacity-70 disabled:cursor-wait"
           aria-label="Open AI Assistant"
         >
           <Sparkles className="h-6 w-6" />
@@ -119,7 +295,7 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
 
       {/* Chat Panel */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 flex flex-col w-96 h-[600px] bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+        <div className="fixed bottom-6 right-6 z-50 flex flex-col w-96 h-[600px] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-purple-600 to-teal-500 text-white">
             <div className="flex items-center gap-2">
@@ -129,32 +305,48 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
               </div>
               <div>
                 <h3 className="font-semibold text-sm">AI Assistant</h3>
-                <p className="text-xs text-purple-100">Always here to help</p>
+                <p className="text-xs text-purple-100">
+                  {alsomSession ? 'Connected to Alsom' : 'Always here to help'}
+                </p>
               </div>
             </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="p-1 hover:bg-white/20 rounded-lg transition"
-              aria-label="Close"
-            >
-              <X className="h-5 w-5" />
-            </button>
+            <div className="flex items-center gap-1">
+              {alsomSession && (
+                <button
+                  onClick={handleSignOut}
+                  className="p-1 hover:bg-white/20 rounded-lg transition text-xs"
+                  aria-label="Sign out"
+                  title="Sign out from Alsom"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                </button>
+              )}
+              <button
+                onClick={() => setIsOpen(false)}
+                className="p-1 hover:bg-white/20 rounded-lg transition"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-800">
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full text-center px-4">
                 <div className="bg-gradient-to-r from-purple-600 to-teal-500 p-4 rounded-full mb-4">
                   <Sparkles className="h-8 w-8 text-white" />
                 </div>
-                <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                   Hi! I'm your AI Assistant
                 </h4>
-                <p className="text-sm text-gray-600 mb-4">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                   I can help you with:
                 </p>
-                <div className="text-left space-y-2 text-sm text-gray-700">
+                <div className="text-left space-y-2 text-sm text-gray-700 dark:text-gray-300">
                   <div className="flex items-start gap-2">
                     <span className="text-purple-600">🌐</span>
                     <span>Search the web for information</span>
@@ -180,7 +372,7 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
                   className={`max-w-[80%] rounded-2xl px-4 py-2 ${
                     msg.role === 'user'
                       ? 'bg-gradient-to-r from-purple-600 to-teal-500 text-white'
-                      : 'bg-white text-gray-900 shadow-sm border border-gray-200'
+                      : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-600'
                   }`}
                 >
                   <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
@@ -190,10 +382,10 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
 
             {isLoading && (
               <div className="flex justify-start">
-                <div className="bg-white text-gray-900 rounded-2xl px-4 py-3 shadow-sm border border-gray-200">
+                <div className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-2xl px-4 py-3 shadow-sm border border-gray-200 dark:border-gray-600">
                   <div className="flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
-                    <span className="text-sm text-gray-600">Thinking...</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Thinking...</span>
                   </div>
                 </div>
               </div>
@@ -203,7 +395,7 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
           </div>
 
           {/* Input */}
-          <div className="p-4 bg-white border-t border-gray-200">
+          <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
             <div className="flex gap-2">
               <input
                 ref={inputRef}
@@ -213,7 +405,7 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
                 onKeyPress={handleKeyPress}
                 placeholder="Ask me anything..."
                 disabled={isLoading}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <button
                 onClick={handleSend}
@@ -225,7 +417,7 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
               </button>
             </div>
             {userContext?.grade && (
-              <p className="text-xs text-gray-500 mt-2 text-center">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
                 Grade {userContext.grade} • {userContext.currentPage || 'Home'}
               </p>
             )}
