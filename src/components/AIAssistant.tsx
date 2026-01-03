@@ -5,6 +5,13 @@ import { api } from '../../convex/_generated/api';
 import AlsomConnectionModal from './AlsomConnectionModal';
 import AlsomAuthModal from './AlsomAuthModal';
 import { supabase } from '../lib/supabase';
+import { 
+  sendAlsomMessage, 
+  buildAlsomRequest, 
+  createAlsomSessionId,
+  EDUSCRAPE_SYSTEM_PROMPT,
+  type AlsomMessage 
+} from '../lib/alsomApi';
 import type { Session } from '@supabase/supabase-js';
 
 interface Message {
@@ -37,8 +44,15 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
   const [alsomSession, setAlsomSession] = useState<Session | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
+  // Convex action for fallback (non-authenticated)
   const sendMessageAction = useAction(api.chatbot.sendChatMessage);
-  const sessionId = useRef(`ai_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`);
+  
+  // Session IDs for both Convex and Alsom
+  const convexSessionId = useRef(`ai_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`);
+  const alsomSessionId = useRef(createAlsomSessionId());
+  
+  // Track conversation history for Alsom API
+  const alsomConversationHistory = useRef<AlsomMessage[]>([]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -109,9 +123,78 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
       setAlsomSession(null);
       setIsOpen(false);
       setMessages([]);
+      // Reset Alsom conversation history
+      alsomConversationHistory.current = [];
+      alsomSessionId.current = createAlsomSessionId();
     } catch (error) {
       console.error('[AIAssistant] Error signing out:', error);
     }
+  };
+
+  // Send message via Alsom API (for authenticated users)
+  const sendViaAlsom = async (messageContent: string): Promise<{ success: boolean; response?: string; error?: string }> => {
+    if (!alsomSession?.user?.id) {
+      return { success: false, error: 'Not authenticated with Alsom' };
+    }
+
+    // Add user message to conversation history
+    alsomConversationHistory.current.push({
+      role: 'user',
+      content: messageContent,
+    });
+
+    // Build context-aware system prompt
+    let systemPrompt = EDUSCRAPE_SYSTEM_PROMPT;
+    if (userContext?.grade) {
+      systemPrompt += `\n\nUser Context: The user is in Grade ${userContext.grade}.`;
+    }
+    if (userContext?.currentPage) {
+      systemPrompt += ` Currently viewing: ${userContext.currentPage}`;
+    }
+
+    // Build and send request
+    const request = buildAlsomRequest(
+      alsomSession.user.id,
+      alsomSessionId.current,
+      alsomConversationHistory.current,
+      {
+        systemPrompt,
+        tools: ['time', 'websearch'],
+        addTools: false,
+      }
+    );
+
+    const response = await sendAlsomMessage(request);
+
+    if (response.error) {
+      // Remove the failed message from history
+      alsomConversationHistory.current.pop();
+      return { success: false, error: response.error };
+    }
+
+    // Add assistant response to conversation history
+    alsomConversationHistory.current.push({
+      role: 'assistant',
+      content: response.reply,
+    });
+
+    return { success: true, response: response.reply };
+  };
+
+  // Send message via Convex (fallback for non-authenticated)
+  const sendViaConvex = async (messageContent: string): Promise<{ success: boolean; response?: string; error?: string; bookToOpen?: { path: string; name: string } }> => {
+    const result = await sendMessageAction({
+      sessionId: convexSessionId.current,
+      message: messageContent,
+      userContext,
+    });
+
+    return {
+      success: result.success,
+      response: result.response,
+      error: result.error,
+      bookToOpen: result.bookToOpen,
+    };
   };
 
   const handleSend = async () => {
@@ -128,11 +211,10 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
     setIsLoading(true);
 
     try {
-      const result = await sendMessageAction({
-        sessionId: sessionId.current,
-        message: userMessage.content,
-        userContext,
-      });
+      // Use Alsom API if authenticated, otherwise fall back to Convex
+      const result = alsomSession 
+        ? await sendViaAlsom(userMessage.content)
+        : await sendViaConvex(userMessage.content);
 
       if (result.success && result.response) {
         const assistantMessage: Message = {
@@ -142,8 +224,8 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
         };
         setMessages(prev => [...prev, assistantMessage]);
 
-        // Handle book opening
-        if (result.bookToOpen && onBookOpen) {
+        // Handle book opening (only from Convex)
+        if ('bookToOpen' in result && result.bookToOpen && onBookOpen) {
           onBookOpen(result.bookToOpen);
         }
       } else {
