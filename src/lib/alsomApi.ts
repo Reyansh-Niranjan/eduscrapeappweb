@@ -2,7 +2,23 @@
  * Alsom API Client
  * 
  * This client connects to the Alsom AI service at /api/chat endpoint.
- * It handles authentication via Supabase and sends chat messages to the Alsom AI.
+ * API Reference: https://github.com/Reyansh-Niranjan/alsom
+ * 
+ * Request Parameters:
+ * - site: string (required) - Identifier for the calling site
+ * - user_id: string (required) - Unique user identifier for privacy
+ * - session_id: string (required) - Session ID for conversation threading
+ * - messages: array (required) - Array of { role, content } messages
+ * - tools: array (optional) - Built-in tools to enable: 'time', 'websearch'
+ * - add_tools: boolean (optional) - If true, includes tool call details in response
+ * - additional_tools: array (optional) - External tools { name, description }
+ * 
+ * Response:
+ * - reply: string - The AI model's text response
+ * - tool_calls: array (only if add_tools=true) - Built-in tool calls executed
+ * - external_tool_calls: array (only if add_tools=true) - External tool calls to execute
+ * - usage: object - Token usage information
+ * - debug: object - Debug information (site, user_id, session_id, timestamp)
  */
 
 // Configuration
@@ -55,10 +71,8 @@ export interface AlsomChatResponse {
 }
 
 /**
- * Check if Alsom API is configured
- */
-/**
- * Check if Alsom API is configured
+ * Check if Alsom API is configured with a valid URL
+ * Validates that VITE_ALSOM_API_URL is set and is a properly formatted URL
  */
 export const isAlsomConfigured = (): boolean => {
   if (!ALSOM_API_URL) return false;
