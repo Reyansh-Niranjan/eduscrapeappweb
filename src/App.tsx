@@ -9,6 +9,7 @@ import Login from "./components/Login.tsx";
 import Dashboard from "./components/Dashboard.tsx";
 import Footer from "./components/Footer";
 import Admin from "./components/Admin";
+import AIAssistant from "./components/AIAssistant";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useEffect, useState } from "react";
 
@@ -103,6 +104,7 @@ export default function App() {
         </main>
 
         <Footer />
+        <AIAssistant />
         <Toaster theme="light" />
       </div>
     </ErrorBoundary>
