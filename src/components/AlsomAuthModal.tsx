@@ -2,7 +2,7 @@ import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { X, Bot, Sparkles } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import type { Session } from '@supabase/supabase-js';
 
 interface AlsomAuthModalProps {
@@ -13,6 +13,15 @@ interface AlsomAuthModalProps {
 
 export default function AlsomAuthModal({ isOpen, onClose, onAuthSuccess }: AlsomAuthModalProps) {
   const [isConfigured, setIsConfigured] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  // Check theme on mount and when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      const theme = document.documentElement.getAttribute('data-theme');
+      setIsDarkMode(theme === 'dark');
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     setIsConfigured(isSupabaseConfigured());
@@ -33,10 +42,10 @@ export default function AlsomAuthModal({ isOpen, onClose, onAuthSuccess }: Alsom
     };
   }, [isOpen, isConfigured, onAuthSuccess]);
 
-  if (!isOpen) return null;
+  // Memoize theme to avoid recalculating on every render
+  const authTheme = useMemo(() => isDarkMode ? 'dark' : 'light', [isDarkMode]);
 
-  // Get current theme
-  const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -118,7 +127,7 @@ export default function AlsomAuthModal({ isOpen, onClose, onAuthSuccess }: Alsom
                 }
               }}
               providers={[]}
-              theme={isDarkMode ? 'dark' : 'light'}
+              theme={authTheme}
             />
           )}
         </div>

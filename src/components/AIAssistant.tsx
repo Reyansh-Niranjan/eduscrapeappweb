@@ -38,7 +38,7 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   const sendMessageAction = useAction(api.chatbot.sendChatMessage);
-  const sessionId = useRef(`ai_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  const sessionId = useRef(`ai_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -215,7 +215,7 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
               <div>
                 <h3 className="font-semibold text-sm">AI Assistant</h3>
                 <p className="text-xs text-purple-100">
-                  {alsomSession ? `Connected as ${alsomSession.user.email?.split('@')[0] || 'User'}` : 'Always here to help'}
+                  {alsomSession ? 'Connected to Alsom' : 'Always here to help'}
                 </p>
               </div>
             </div>
