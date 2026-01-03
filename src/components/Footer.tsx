@@ -6,9 +6,7 @@ export default function Footer() {
           {/* Logo and Description */}
           <div className="md:col-span-2">
             <div className="flex items-center space-x-3 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-r from-teal-400 to-purple-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">E</span>
-              </div>
+              <img src="/logo-icon.svg" alt="EduScrapeApp" className="w-10 h-10 rounded-lg" />
               <span className="font-bold text-xl" style={{ color: 'var(--theme-text)' }}>EduScrapeApp</span>
             </div>
             <p className="mb-6 max-w-md" style={{ color: 'var(--theme-text-secondary)' }}>

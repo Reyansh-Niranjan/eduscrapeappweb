@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <!-- Background - Solid Black -->
+  <rect width="48" height="48" rx="10" fill="#0F172A"/>
+  
+  <!-- Closed Book - Cover (purple) -->
+  <path d="M10 8 L10 40 Q10 42 12 42 L38 42 Q40 42 40 40 L40 10 Q40 8 38 8 L12 8" fill="#8B5CF6"/>
+  
+  <!-- Book spine -->
+  <rect x="10" y="8" width="5" height="34" fill="#7C3AED"/>
+  
+  <!-- Pages (white) -->
+  <rect x="15" y="11" width="22" height="28" fill="#FFFFFF" rx="2"/>
+  
+  <!-- Page lines -->
+  <line x1="19" y1="18" x2="33" y2="18" stroke="#E2E8F0" stroke-width="2" stroke-linecap="round"/>
+  <line x1="19" y1="24" x2="33" y2="24" stroke="#E2E8F0" stroke-width="2" stroke-linecap="round"/>
+  <line x1="19" y1="30" x2="28" y2="30" stroke="#E2E8F0" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- Star accent -->
+  <polygon points="42,6 43,9 46,9 43.5,11 44.5,14 42,12 39.5,14 40.5,11 38,9 41,9" fill="#14B8A6"/>
+</svg>

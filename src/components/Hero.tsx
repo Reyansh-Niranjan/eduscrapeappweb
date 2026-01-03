@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import OptimizedLogo from './OptimizedLogo';
 
 export default function Hero() {
   const [isVisible, setIsVisible] = useState(false);
+  const [logoLoaded, setLogoLoaded] = useState(false);
+  const [logoError, setLogoError] = useState(false);
 
   useEffect(() => {
     setIsVisible(true);
@@ -17,15 +18,23 @@ export default function Hero() {
         <div className="max-w-4xl mx-auto">
           {/* Product Logo with animation */}
           <div className={`mb-8 flex justify-center ${isVisible ? 'scale-in' : 'opacity-0'}`}>
-            <div className="w-32 h-32 rounded-2xl flex items-center justify-center shadow-lg overflow-hidden border-2" style={{ background: 'var(--theme-card-bg)', borderColor: 'var(--theme-border)' }}>
-              <OptimizedLogo
-                src="https://i.imgur.com/r4W9l7n.png"
-                alt="EduScrapeApp Logo"
-                className="w-full h-full object-cover"
-                fallbackText="ES"
-                width={128}
-                height={128}
-              />
+            <div className="w-32 h-32 rounded-2xl flex items-center justify-center shadow-2xl overflow-hidden border-2" style={{ background: 'var(--theme-card-bg)', borderColor: 'var(--theme-border)' }}>
+              {logoError ? (
+                <div className="w-full h-full flex items-center justify-center bg-purple-600 text-white font-bold text-2xl">
+                  CC
+                </div>
+              ) : (
+                <img
+                  src="https://i.imgur.com/r4W9l7n.png"
+                  alt="EduScrapeApp Logo"
+                  className="w-full h-full object-cover"
+                  width={128}
+                  height={128}
+                  onLoad={() => setLogoLoaded(true)}
+                  onError={() => setLogoError(true)}
+                  style={{ opacity: logoLoaded ? 1 : 0.7, transition: 'opacity 0.3s ease-in-out' }}
+                />
+              )}
             </div>
           </div>
 

@@ -8,10 +8,10 @@ interface BreadcrumbProps {
 
 export default function Breadcrumb({ currentPath, onNavigateHome, onNavigateToPath }: BreadcrumbProps) {
   return (
-    <div className="flex items-center gap-2 text-sm text-gray-600 flex-wrap">
+    <div className="flex items-center gap-2 text-sm flex-wrap" style={{ color: 'var(--theme-text-secondary)' }}>
       <button 
         onClick={onNavigateHome}
-        className="flex items-center gap-1 hover:text-purple-600 transition"
+        className="flex items-center gap-1 hover:text-purple-600 dark:hover:text-purple-400 transition"
         title="Go to home"
       >
         <Home className="h-4 w-4" />
@@ -21,7 +21,7 @@ export default function Breadcrumb({ currentPath, onNavigateHome, onNavigateToPa
           <ChevronRight className="h-4 w-4" />
           <button
             onClick={() => onNavigateToPath(currentPath.slice(0, index + 1))}
-            className={`hover:text-purple-600 transition ${
+            className={`hover:text-purple-600 dark:hover:text-purple-400 transition ${
               index === 0 ? 'font-semibold' : ''
             }`}
           >

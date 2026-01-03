@@ -77,21 +77,21 @@ export default function ProfileEdit({ onCancel }: ProfileEditProps) {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading profile...</p>
+          <p className="mt-4" style={{ color: 'var(--theme-text-secondary)' }}>Loading profile...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white p-6">
+    <div className="min-h-screen p-6" style={{ background: 'var(--theme-bg)' }}>
       <div className="max-w-2xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+        <div className="rounded-xl shadow-sm p-6 mb-6" style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}>
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Profile</h1>
-              <p className="text-gray-600 mt-2">
+              <h1 className="text-3xl font-bold" style={{ color: 'var(--theme-text)' }}>Profile</h1>
+              <p className="mt-2" style={{ color: 'var(--theme-text-secondary)' }}>
                 {isEditing ? "Update your personal information" : "View your profile details"}
               </p>
             </div>
@@ -109,7 +109,8 @@ export default function ProfileEdit({ onCancel }: ProfileEditProps) {
               {onCancel && (
                 <button
                   onClick={onCancel}
-                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition"
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition"
+                  style={{ color: 'var(--theme-text-secondary)' }}
                   title="Cancel"
                 >
                   <X className="h-6 w-6" />
@@ -120,15 +121,15 @@ export default function ProfileEdit({ onCancel }: ProfileEditProps) {
         </div>
 
         {/* Profile Form */}
-        <div className="bg-white rounded-xl shadow-sm p-8">
+        <div className="rounded-xl shadow-sm p-8" style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}>
           {/* Current User Email */}
           {user?.email && (
-            <div className="mb-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
+            <div className="mb-6 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
               <div className="flex items-center gap-3">
-                <Mail className="h-5 w-5 text-purple-600" />
+                <Mail className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 <div>
-                  <p className="text-sm font-medium text-gray-700">Account Email</p>
-                  <p className="text-sm text-gray-900">{user.email}</p>
+                  <p className="text-sm font-medium" style={{ color: 'var(--theme-text-secondary)' }}>Account Email</p>
+                  <p className="text-sm" style={{ color: 'var(--theme-text)' }}>{user.email}</p>
                 </div>
               </div>
             </div>
@@ -138,34 +139,34 @@ export default function ProfileEdit({ onCancel }: ProfileEditProps) {
             /* View Mode - Display Profile Info */
             <div className="space-y-6">
               {/* Name Display */}
-              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="p-4 rounded-lg" style={{ background: 'var(--theme-bg-secondary)', border: '1px solid var(--theme-border)' }}>
                 <div className="flex items-center gap-3 mb-2">
-                  <User className="h-5 w-5 text-purple-600" />
-                  <span className="text-sm font-semibold text-gray-700">Full Name</span>
+                  <User className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  <span className="text-sm font-semibold" style={{ color: 'var(--theme-text-secondary)' }}>Full Name</span>
                 </div>
-                <p className="text-lg font-medium text-gray-900 ml-8">
+                <p className="text-lg font-medium ml-8" style={{ color: 'var(--theme-text)' }}>
                   {formData.name || "Not set"}
                 </p>
               </div>
 
               {/* Grade Display */}
-              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="p-4 rounded-lg" style={{ background: 'var(--theme-bg-secondary)', border: '1px solid var(--theme-border)' }}>
                 <div className="flex items-center gap-3 mb-2">
-                  <GraduationCap className="h-5 w-5 text-purple-600" />
-                  <span className="text-sm font-semibold text-gray-700">Grade/Class</span>
+                  <GraduationCap className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  <span className="text-sm font-semibold" style={{ color: 'var(--theme-text-secondary)' }}>Grade/Class</span>
                 </div>
-                <p className="text-lg font-medium text-gray-900 ml-8">
+                <p className="text-lg font-medium ml-8" style={{ color: 'var(--theme-text)' }}>
                   {formData.grade ? formData.grade.replace('Class', 'Class ') : "Not set"}
                 </p>
               </div>
 
               {/* Role Display */}
-              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="p-4 rounded-lg" style={{ background: 'var(--theme-bg-secondary)', border: '1px solid var(--theme-border)' }}>
                 <div className="flex items-center gap-3 mb-2">
-                  <Briefcase className="h-5 w-5 text-purple-600" />
-                  <span className="text-sm font-semibold text-gray-700">Role</span>
+                  <Briefcase className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  <span className="text-sm font-semibold" style={{ color: 'var(--theme-text-secondary)' }}>Role</span>
                 </div>
-                <p className="text-lg font-medium text-gray-900 ml-8 capitalize">
+                <p className="text-lg font-medium ml-8 capitalize" style={{ color: 'var(--theme-text)' }}>
                   {formData.role}
                 </p>
               </div>
@@ -175,9 +176,9 @@ export default function ProfileEdit({ onCancel }: ProfileEditProps) {
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Name Field */}
               <div>
-                <label htmlFor="name" className="block text-sm font-semibold text-gray-900 mb-2">
+                <label htmlFor="name" className="block text-sm font-semibold mb-2" style={{ color: 'var(--theme-text)' }}>
                   <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-purple-600" />
+                    <User className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                     Full Name *
                   </div>
                 </label>
@@ -186,19 +187,20 @@ export default function ProfileEdit({ onCancel }: ProfileEditProps) {
                   id="name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                  className="w-full px-4 py-3 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                  style={{ background: 'var(--theme-input-bg)', border: '1px solid var(--theme-border)', color: 'var(--theme-text)' }}
                   placeholder="Enter your full name"
                   required
                   minLength={2}
                 />
-                <p className="mt-1 text-xs text-gray-500">This name will be displayed across the platform</p>
+                <p className="mt-1 text-xs" style={{ color: 'var(--theme-text-secondary)' }}>This name will be displayed across the platform</p>
               </div>
 
               {/* Grade Field */}
               <div>
-                <label htmlFor="grade" className="block text-sm font-semibold text-gray-900 mb-2">
+                <label htmlFor="grade" className="block text-sm font-semibold mb-2" style={{ color: 'var(--theme-text)' }}>
                   <div className="flex items-center gap-2">
-                    <GraduationCap className="h-4 w-4 text-purple-600" />
+                    <GraduationCap className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                     Grade/Class *
                   </div>
                 </label>
@@ -206,7 +208,8 @@ export default function ProfileEdit({ onCancel }: ProfileEditProps) {
                   id="grade"
                   value={formData.grade}
                   onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                  className="w-full px-4 py-3 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                  style={{ background: 'var(--theme-input-bg)', border: '1px solid var(--theme-border)', color: 'var(--theme-text)' }}
                   required
                 >
                   <option value="">Select your grade</option>
@@ -252,7 +255,8 @@ export default function ProfileEdit({ onCancel }: ProfileEditProps) {
                     }
                   }}
                   disabled={isSubmitting}
-                  className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:border-purple-500 hover:text-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  className="px-6 py-3 border-2 rounded-lg font-semibold hover:border-purple-500 hover:text-purple-600 dark:hover:text-purple-400 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text-secondary)' }}
                 >
                   Cancel
                 </button>
@@ -262,16 +266,16 @@ export default function ProfileEdit({ onCancel }: ProfileEditProps) {
         </div>
 
         {/* Info Card */}
-        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
           <div className="flex gap-3">
             <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
               </svg>
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-blue-900">Profile Information</h3>
-              <p className="text-sm text-blue-800 mt-1">
+              <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-300">Profile Information</h3>
+              <p className="text-sm text-blue-800 dark:text-blue-400 mt-1">
                 Your profile information helps us personalize your experience and provide relevant content.
                 Your grade determines which materials you can access in the library.
               </p>

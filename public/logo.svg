@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <!-- Background - Solid Black -->
+  <rect width="128" height="128" rx="24" fill="#0F172A"/>
+  
+  <!-- Closed Book - Back cover (purple) -->
+  <path d="M32 28 L32 100 Q32 104 36 104 L96 104 Q100 104 100 100 L100 32 Q100 28 96 28 L36 28 Q32 28 32 32" fill="#8B5CF6"/>
+  
+  <!-- Book spine shadow -->
+  <rect x="32" y="28" width="8" height="76" fill="#7C3AED"/>
+  
+  <!-- Pages (white/glowing) -->
+  <path d="M40 32 L40 96 L92 96 L92 36 Q92 32 88 32 L40 32" fill="#FFFFFF"/>
+  
+  <!-- Page lines -->
+  <line x1="48" y1="44" x2="84" y2="44" stroke="#E2E8F0" stroke-width="2" stroke-linecap="round"/>
+  <line x1="48" y1="54" x2="84" y2="54" stroke="#E2E8F0" stroke-width="2" stroke-linecap="round"/>
+  <line x1="48" y1="64" x2="84" y2="64" stroke="#E2E8F0" stroke-width="2" stroke-linecap="round"/>
+  <line x1="48" y1="74" x2="72" y2="74" stroke="#E2E8F0" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- Page glow effect -->
+  <rect x="40" y="32" width="52" height="64" fill="#FFFFFF" opacity="0.1" rx="2"/>
+  
+  <!-- Stars - Celestial accent -->
+  <polygon points="20,20 22,26 28,26 23,30 25,36 20,32 15,36 17,30 12,26 18,26" fill="#14B8A6"/>
+  <circle cx="108" cy="24" r="3" fill="#FFFFFF"/>
+  <circle cx="16" cy="108" r="2" fill="#14B8A6"/>
+  <circle cx="112" cy="100" r="2" fill="#FFFFFF"/>
+</svg>

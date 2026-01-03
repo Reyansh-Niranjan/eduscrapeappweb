@@ -215,15 +215,15 @@ img {
 
 /* Modern card style (WhatsApp inspired) */
 .card {
-  background: var(--color-white);
-  border: 1px solid var(--color-gray-200);
+  background: var(--theme-card-bg);
+  border: 1px solid var(--theme-border);
   border-radius: var(--radius-lg);
   padding: var(--spacing-lg);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 3px var(--theme-card-shadow);
 }
 
 .card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 12px var(--theme-card-shadow);
   transform: translateY(-2px);
 }
 

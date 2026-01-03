@@ -31,9 +31,7 @@ export default function Header() {
       <nav className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">E</span>
-            </div>
+            <img src="/logo-icon.svg" alt="EduScrapeApp" className="w-10 h-10 rounded-lg" />
             <span className="font-bold text-xl" style={{ color: 'var(--theme-text)' }}>EduScrapeApp</span>
           </div>
 

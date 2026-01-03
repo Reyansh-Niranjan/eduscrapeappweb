@@ -1,4 +1,7 @@
-import { X, Sparkles, Bot } from 'lucide-react';
+import { X } from 'lucide-react';
+
+// Alsom logo URL from their website
+const ALSOM_LOGO_URL = 'https://alsom.vercel.app/favicon.ico';
 
 interface AlsomConnectionModalProps {
   isOpen: boolean;
@@ -27,8 +30,8 @@ export default function AlsomConnectionModal({ isOpen, onClose, onConnect }: Als
           <div className="flex items-center justify-center gap-6 mb-6">
             {/* EduScrapeApp Logo */}
             <div className="flex flex-col items-center">
-              <div className="w-16 h-16 bg-gradient-to-r from-purple-600 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg">
-                <Sparkles className="h-8 w-8 text-white" />
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg overflow-hidden">
+                <img src="/logo-icon.svg" alt="EduScrapeApp" className="w-full h-full" />
               </div>
               <span className="mt-2 text-xs font-medium text-gray-600 dark:text-gray-400">EduScrapeApp</span>
             </div>
@@ -40,10 +43,19 @@ export default function AlsomConnectionModal({ isOpen, onClose, onConnect }: Als
               <div className="w-8 h-0.5 bg-gradient-to-r from-teal-400 to-indigo-500"></div>
             </div>
 
-            {/* Alsom Logo */}
+            {/* Alsom Logo - fetched from their website */}
             <div className="flex flex-col items-center">
-              <div className="w-16 h-16 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <Bot className="h-8 w-8 text-white" />
+              <div className="w-16 h-16 bg-white dark:bg-gray-800 rounded-2xl flex items-center justify-center shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                <img 
+                  src={ALSOM_LOGO_URL}
+                  alt="Alsom" 
+                  className="w-12 h-12 object-contain"
+                  onError={(e) => {
+                    // Fallback if logo fails to load
+                    e.currentTarget.style.display = 'none';
+                    e.currentTarget.parentElement!.innerHTML = '<span class="text-2xl font-bold text-indigo-600">A</span>';
+                  }}
+                />
               </div>
               <span className="mt-2 text-xs font-medium text-gray-600 dark:text-gray-400">Alsom</span>
             </div>

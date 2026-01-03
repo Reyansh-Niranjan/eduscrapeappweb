@@ -1,9 +1,12 @@
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
-import { X, Bot, Sparkles } from 'lucide-react';
+import { X } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useEffect, useState, useMemo } from 'react';
 import type { Session } from '@supabase/supabase-js';
+
+// Alsom logo URL from their website
+const ALSOM_LOGO_URL = 'https://alsom.vercel.app/favicon.ico';
 
 interface AlsomAuthModalProps {
   isOpen: boolean;
@@ -69,12 +72,20 @@ export default function AlsomAuthModal({ isOpen, onClose, onAuthSuccess }: Alsom
         <div className="p-6 pb-4 text-center border-b border-gray-200 dark:border-gray-800">
           {/* Logos */}
           <div className="flex items-center justify-center gap-4 mb-4">
-            <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-teal-500 rounded-xl flex items-center justify-center shadow-lg">
-              <Sparkles className="h-6 w-6 text-white" />
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
+              <img src="/logo-icon.svg" alt="EduScrapeApp" className="w-full h-full" />
             </div>
             <span className="text-gray-400 text-2xl">×</span>
-            <div className="w-12 h-12 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-              <Bot className="h-6 w-6 text-white" />
+            <div className="w-12 h-12 bg-white dark:bg-gray-800 rounded-xl flex items-center justify-center shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+              <img 
+                src={ALSOM_LOGO_URL}
+                alt="Alsom" 
+                className="w-8 h-8 object-contain"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.parentElement!.innerHTML = '<span class="text-xl font-bold text-indigo-600">A</span>';
+                }}
+              />
             </div>
           </div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
