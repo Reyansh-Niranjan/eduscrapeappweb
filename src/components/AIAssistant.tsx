@@ -48,7 +48,12 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
   const sendMessageAction = useAction(api.chatbot.sendChatMessage);
   
   // Session IDs for both Convex and Alsom
-  const convexSessionId = useRef(`ai_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`);
+  // Use crypto.randomUUID if available for better security
+  const convexSessionId = useRef(
+    typeof crypto !== 'undefined' && crypto.randomUUID 
+      ? `ai_${crypto.randomUUID()}` 
+      : `ai_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
+  );
   const alsomSessionId = useRef(createAlsomSessionId());
   
   // Track conversation history for Alsom API
@@ -138,10 +143,11 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
     }
 
     // Add user message to conversation history
-    alsomConversationHistory.current.push({
+    const userMsg: AlsomMessage = {
       role: 'user',
       content: messageContent,
-    });
+    };
+    alsomConversationHistory.current.push(userMsg);
 
     // Build context-aware system prompt
     let systemPrompt = EDUSCRAPE_SYSTEM_PROMPT;
@@ -167,8 +173,11 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
     const response = await sendAlsomMessage(request);
 
     if (response.error) {
-      // Remove the failed message from history
-      alsomConversationHistory.current.pop();
+      // Remove the failed message from history (only if it's the message we just added)
+      const lastMsg = alsomConversationHistory.current[alsomConversationHistory.current.length - 1];
+      if (lastMsg && lastMsg.role === 'user' && lastMsg.content === messageContent) {
+        alsomConversationHistory.current.pop();
+      }
       return { success: false, error: response.error };
     }
 

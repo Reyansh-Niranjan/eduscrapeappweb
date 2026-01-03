@@ -57,8 +57,17 @@ export interface AlsomChatResponse {
 /**
  * Check if Alsom API is configured
  */
+/**
+ * Check if Alsom API is configured
+ */
 export const isAlsomConfigured = (): boolean => {
-  return Boolean(ALSOM_API_URL);
+  if (!ALSOM_API_URL) return false;
+  try {
+    new URL(ALSOM_API_URL);
+    return true;
+  } catch {
+    return false;
+  }
 };
 
 /**
@@ -78,7 +87,16 @@ export async function sendAlsomMessage(
       body: JSON.stringify(request),
     });
 
-    const data = await response.json();
+    // Handle non-JSON responses gracefully
+    let data: AlsomChatResponse;
+    try {
+      data = await response.json();
+    } catch {
+      return {
+        reply: '',
+        error: `Server returned invalid response (status ${response.status})`,
+      };
+    }
 
     if (!response.ok) {
       return {
@@ -88,7 +106,7 @@ export async function sendAlsomMessage(
       };
     }
 
-    return data as AlsomChatResponse;
+    return data;
   } catch (error) {
     console.error('[AlsomAPI] Error:', error);
     return {
@@ -103,6 +121,10 @@ export async function sendAlsomMessage(
  * Generates a unique session ID for conversation threading
  */
 export function createAlsomSessionId(): string {
+  // Use crypto.randomUUID if available, fallback to timestamp + random
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return `alsom_${crypto.randomUUID()}`;
+  }
   return `alsom_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 }
 
