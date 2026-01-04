@@ -220,10 +220,21 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
     setIsLoading(true);
 
     try {
-      // Use Alsom API if authenticated, otherwise fall back to Convex
-      const result = alsomSession 
-        ? await sendViaAlsom(userMessage.content)
-        : await sendViaConvex(userMessage.content);
+      let result: { success: boolean; response?: string; error?: string; bookToOpen?: { path: string; name: string } };
+      
+      // Try Alsom API if authenticated, with automatic fallback to Convex on failure
+      if (alsomSession) {
+        result = await sendViaAlsom(userMessage.content);
+        
+        // If Alsom fails (e.g., 500 error), automatically fallback to Convex
+        if (!result.success) {
+          console.warn('[AI] Alsom API failed, falling back to Convex:', result.error);
+          result = await sendViaConvex(userMessage.content);
+        }
+      } else {
+        // No Alsom session, use Convex directly
+        result = await sendViaConvex(userMessage.content);
+      }
 
       if (result.success && result.response) {
         const assistantMessage: Message = {
