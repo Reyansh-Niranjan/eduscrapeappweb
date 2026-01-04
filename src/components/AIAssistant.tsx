@@ -20,6 +20,13 @@ interface Message {
   timestamp: number;
 }
 
+interface ChatResult {
+  success: boolean;
+  response?: string;
+  error?: string;
+  bookToOpen?: { path: string; name: string };
+}
+
 interface AIAssistantProps {
   userContext?: {
     grade?: string;
@@ -137,7 +144,7 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
   };
 
   // Send message via Alsom API (for authenticated users)
-  const sendViaAlsom = async (messageContent: string): Promise<{ success: boolean; response?: string; error?: string }> => {
+  const sendViaAlsom = async (messageContent: string): Promise<ChatResult> => {
     if (!alsomSession?.user?.id) {
       return { success: false, error: 'Not authenticated with Alsom' };
     }
@@ -191,7 +198,7 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
   };
 
   // Send message via Convex (fallback for non-authenticated)
-  const sendViaConvex = async (messageContent: string): Promise<{ success: boolean; response?: string; error?: string; bookToOpen?: { path: string; name: string } }> => {
+  const sendViaConvex = async (messageContent: string): Promise<ChatResult> => {
     const result = await sendMessageAction({
       sessionId: convexSessionId.current,
       message: messageContent,
@@ -220,7 +227,8 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
     setIsLoading(true);
 
     try {
-      let result: { success: boolean; response?: string; error?: string; bookToOpen?: { path: string; name: string } };
+      let result: ChatResult;
+      let alsomError: string | undefined;
       
       // Try Alsom API if authenticated, with automatic fallback to Convex on failure
       if (alsomSession) {
@@ -228,8 +236,14 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
         
         // If Alsom fails (e.g., 500 error), automatically fallback to Convex
         if (!result.success) {
-          console.warn('[AI] Alsom API failed, falling back to Convex:', result.error);
+          alsomError = result.error;
+          console.warn('[AI] Alsom API failed, falling back to Convex:', alsomError);
           result = await sendViaConvex(userMessage.content);
+          
+          // If Convex also fails, include info about both failures
+          if (!result.success && alsomError) {
+            result.error = `Alsom: ${alsomError}. Fallback: ${result.error || 'Unknown error'}`;
+          }
         }
       } else {
         // No Alsom session, use Convex directly
@@ -245,7 +259,7 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
         setMessages(prev => [...prev, assistantMessage]);
 
         // Handle book opening (only from Convex)
-        if ('bookToOpen' in result && result.bookToOpen && onBookOpen) {
+        if (result.bookToOpen && onBookOpen) {
           onBookOpen(result.bookToOpen);
         }
       } else {
