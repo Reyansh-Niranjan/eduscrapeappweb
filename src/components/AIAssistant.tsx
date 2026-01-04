@@ -240,9 +240,10 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
           console.warn('[AI] Alsom API failed, falling back to Convex:', alsomError);
           result = await sendViaConvex(userMessage.content);
           
-          // If Convex also fails, include info about both failures
+          // If Convex also fails, log detailed error but show user-friendly message
           if (!result.success && alsomError) {
-            result.error = `Alsom: ${alsomError}. Fallback: ${result.error || 'Unknown error'}`;
+            console.error('[AI] Both backends failed - Alsom:', alsomError, 'Convex:', result.error);
+            result.error = 'Sorry, I encountered an error. Please try again later.';
           }
         }
       } else {
@@ -258,7 +259,7 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
         };
         setMessages(prev => [...prev, assistantMessage]);
 
-        // Handle book opening (only from Convex)
+        // Handle book opening (available from Convex backend)
         if (result.bookToOpen && onBookOpen) {
           onBookOpen(result.bookToOpen);
         }
