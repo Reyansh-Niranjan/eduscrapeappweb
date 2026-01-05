@@ -1,18 +1,7 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Bot, Send, X, Loader2, Sparkles } from 'lucide-react';
 import { useAction } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import AlsomConnectionModal from './AlsomConnectionModal';
-import AlsomAuthModal from './AlsomAuthModal';
-import { supabase } from '../lib/supabase';
-import { 
-  sendAlsomMessage, 
-  buildAlsomRequest, 
-  createAlsomSessionId,
-  EDUSCRAPE_SYSTEM_PROMPT,
-  type AlsomMessage 
-} from '../lib/alsomApi';
-import type { Session } from '@supabase/supabase-js';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -44,160 +33,33 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  
-  // Alsom connection state
-  const [showConnectionModal, setShowConnectionModal] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [alsomSession, setAlsomSession] = useState<Session | null>(null);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-  // Convex action for fallback (non-authenticated)
+  // Convex action (OpenRouter-backed)
   const sendMessageAction = useAction(api.chatbot.sendChatMessage);
   
-  // Session IDs for both Convex and Alsom
+  // Session ID
   // Use crypto.randomUUID if available for better security
   const convexSessionId = useRef(
     typeof crypto !== 'undefined' && crypto.randomUUID 
       ? `ai_${crypto.randomUUID()}` 
       : `ai_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
   );
-  const alsomSessionId = useRef(createAlsomSessionId());
-  
-  // Track conversation history for Alsom API
-  const alsomConversationHistory = useRef<AlsomMessage[]>([]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
-
-  // Check for existing Alsom session on mount
-  useEffect(() => {
-    const checkSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        setAlsomSession(session);
-      } catch (error) {
-        console.error('[AIAssistant] Error checking session:', error);
-      } finally {
-        setIsCheckingAuth(false);
-      }
-    };
-    checkSession();
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAlsomSession(session);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
   useEffect(() => {
-    if (isOpen && alsomSession) {
+    if (isOpen) {
       inputRef.current?.focus();
     }
-  }, [isOpen, alsomSession]);
+  }, [isOpen]);
 
-  // Handle chat button click
-  const handleChatButtonClick = () => {
-    if (alsomSession) {
-      // Already authenticated, open chat directly
-      setIsOpen(true);
-    } else {
-      // Not authenticated, show connection modal
-      setShowConnectionModal(true);
-    }
-  };
-
-  // Handle connection modal "Connect" button
-  const handleConnect = () => {
-    setShowConnectionModal(false);
-    setShowAuthModal(true);
-  };
-
-  // Handle successful Alsom authentication
-  const handleAuthSuccess = useCallback((session: Session) => {
-    setAlsomSession(session);
-    setShowAuthModal(false);
-    setIsOpen(true);
-  }, []);
-
-  // Handle sign out from Alsom
-  const handleSignOut = async () => {
-    try {
-      await supabase.auth.signOut();
-      setAlsomSession(null);
-      setIsOpen(false);
-      setMessages([]);
-      // Reset Alsom conversation history
-      alsomConversationHistory.current = [];
-      alsomSessionId.current = createAlsomSessionId();
-    } catch (error) {
-      console.error('[AIAssistant] Error signing out:', error);
-    }
-  };
-
-  // Send message via Alsom API (for authenticated users)
-  const sendViaAlsom = async (messageContent: string): Promise<ChatResult> => {
-    if (!alsomSession?.user?.id) {
-      return { success: false, error: 'Not authenticated with Alsom' };
-    }
-
-    // Add user message to conversation history
-    const userMsg: AlsomMessage = {
-      role: 'user',
-      content: messageContent,
-    };
-    alsomConversationHistory.current.push(userMsg);
-
-    // Build context-aware system prompt
-    let systemPrompt = EDUSCRAPE_SYSTEM_PROMPT;
-    if (userContext?.grade) {
-      systemPrompt += `\n\nUser Context: The user is in Grade ${userContext.grade}.`;
-    }
-    if (userContext?.currentPage) {
-      systemPrompt += ` Currently viewing: ${userContext.currentPage}`;
-    }
-
-    // Build and send request
-    const request = buildAlsomRequest(
-      alsomSession.user.id,
-      alsomSessionId.current,
-      alsomConversationHistory.current,
-      {
-        systemPrompt,
-        tools: ['time', 'websearch'],
-        addTools: false,
-      }
-    );
-
-    const response = await sendAlsomMessage(request);
-
-    if (response.error) {
-      // Remove the failed message from history (only if it's the message we just added)
-      const lastMsg = alsomConversationHistory.current[alsomConversationHistory.current.length - 1];
-      if (lastMsg && lastMsg.role === 'user' && lastMsg.content === messageContent) {
-        alsomConversationHistory.current.pop();
-      }
-      return { success: false, error: response.error };
-    }
-
-    // Add assistant response to conversation history
-    alsomConversationHistory.current.push({
-      role: 'assistant',
-      content: response.reply,
-    });
-
-    return { success: true, response: response.reply };
-  };
-
-  // Send message via Convex (fallback for non-authenticated)
+  // Send message via Convex
   const sendViaConvex = async (messageContent: string): Promise<ChatResult> => {
     const result = await sendMessageAction({
       sessionId: convexSessionId.current,
@@ -227,29 +89,7 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
     setIsLoading(true);
 
     try {
-      let result: ChatResult;
-      let alsomError: string | undefined;
-      
-      // Try Alsom API if authenticated, with automatic fallback to Convex on failure
-      if (alsomSession) {
-        result = await sendViaAlsom(userMessage.content);
-        
-        // If Alsom fails (e.g., 500 error), automatically fallback to Convex
-        if (!result.success) {
-          alsomError = result.error;
-          console.warn('[AI] Alsom API failed, falling back to Convex:', alsomError);
-          result = await sendViaConvex(userMessage.content);
-          
-          // If Convex also fails, log detailed error but show user-friendly message
-          if (!result.success && alsomError) {
-            console.error('[AI] Both backends failed - Alsom:', alsomError, 'Convex:', result.error);
-            result.error = 'Sorry, I encountered an error. Please try again later.';
-          }
-        }
-      } else {
-        // No Alsom session, use Convex directly
-        result = await sendViaConvex(userMessage.content);
-      }
+      const result = await sendViaConvex(userMessage.content);
 
       if (result.success && result.response) {
         const assistantMessage: Message = {
@@ -293,25 +133,10 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
 
   return (
     <>
-      {/* Alsom Connection Modal */}
-      <AlsomConnectionModal
-        isOpen={showConnectionModal}
-        onClose={() => setShowConnectionModal(false)}
-        onConnect={handleConnect}
-      />
-
-      {/* Alsom Auth Modal */}
-      <AlsomAuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onAuthSuccess={handleAuthSuccess}
-      />
-
       {/* Floating Button */}
       {!isOpen && (
         <button
-          onClick={handleChatButtonClick}
-          disabled={isCheckingAuth}
+          onClick={() => setIsOpen(true)}
           className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 to-teal-500 text-white shadow-lg hover:shadow-xl transition-all hover:scale-110 disabled:opacity-70 disabled:cursor-wait"
           aria-label="Open AI Assistant"
         >
@@ -332,31 +157,17 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
               <div>
                 <h3 className="font-semibold text-sm">AI Assistant</h3>
                 <p className="text-xs text-purple-100">
-                  {alsomSession ? 'Connected to Alsom' : 'Always here to help'}
+                  Always here to help
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-1">
-              {alsomSession && (
-                <button
-                  onClick={handleSignOut}
-                  className="p-1 hover:bg-white/20 rounded-lg transition text-xs"
-                  aria-label="Sign out"
-                  title="Sign out from Alsom"
-                >
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                  </svg>
-                </button>
-              )}
-              <button
-                onClick={() => setIsOpen(false)}
-                className="p-1 hover:bg-white/20 rounded-lg transition"
-                aria-label="Close"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+            <button
+              onClick={() => setIsOpen(false)}
+              className="p-1 hover:bg-white/20 rounded-lg transition"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
 
           {/* Messages */}

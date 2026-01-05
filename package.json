@@ -17,9 +17,6 @@
   "dependencies": {
     "@auth/core": "^0.37.4",
     "@convex-dev/auth": "^0.0.90",
-    "@supabase/auth-ui-react": "^0.4.7",
-    "@supabase/auth-ui-shared": "^0.1.8",
-    "@supabase/supabase-js": "^2.89.0",
     "clsx": "^2.1.1",
     "convex": "^1.31.2",
     "jszip": "^3.10.1",

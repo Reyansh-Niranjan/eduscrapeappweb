@@ -144,12 +144,10 @@ For administrators and content managers:
 - **JSZip** - In-browser ZIP file extraction
 - **PDF.js / React-PDF** - Advanced PDF rendering and viewing
 - **Sonner** - Toast notifications for user feedback
-- **Supabase** - Additional authentication for AI features
 
 ### External Services
 - **Firebase Hosting** - Educational content delivery (https://eduscrape-host.web.app)
 - **OpenRouter API** - AI chatbot powered by Claude 3.5 Sonnet
-- **Alsom API** - Enhanced AI capabilities for authenticated users
 
 ---
 
