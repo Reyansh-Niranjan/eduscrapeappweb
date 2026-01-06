@@ -14,7 +14,7 @@ export const getOptimizedImageUrl = (url: string, width = 384, quality = 70) => 
       "fit=cover",
     ];
     return `${proxyBase}/?${params.join("&")}`;
-  } catch (error) {
+  } catch (_error) {
     return url;
   }
 };

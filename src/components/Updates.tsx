@@ -88,7 +88,7 @@ export default function Updates() {
         </div>
 
         <div className="max-w-4xl mx-auto space-y-8">
-          {displayUpdates.map((update, index) => (
+          {displayUpdates.map((update, _index) => (
             <div
               key={update._id}
               className="group card rounded-2xl transition-all duration-300"

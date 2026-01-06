@@ -2,12 +2,11 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 
 export default function Hero() {
-  const [isVisible, setIsVisible] = useState(false);
   const [logoLoaded, setLogoLoaded] = useState(false);
   const [logoError, setLogoError] = useState(false);
 
   useEffect(() => {
-    setIsVisible(true);
+    // Component mounted
   }, []);
 
   return (

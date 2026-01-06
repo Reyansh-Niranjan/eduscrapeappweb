@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -107,7 +107,7 @@ export default function Quiz({ quizId, onComplete, onClose }: QuizProps) {
       setError(null);
       const timeSpentOnQuestion = timeSpent[questionKey] || 0;
 
-      const result = await submitQuizAnswer({
+      await submitQuizAnswer({
         attemptId: attempt.attemptId,
         questionId: question.questionId,
         answer,

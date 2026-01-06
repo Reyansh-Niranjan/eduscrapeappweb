@@ -3,8 +3,6 @@ import { api } from "../../convex/_generated/api";
 import { ErrorBoundary } from "./ErrorBoundary";
 import LoadingSpinner from "./LoadingSpinner";
 import OptimizedImage from "./OptimizedImage";
-import { motion } from "framer-motion";
-import { useState } from "react";
 
 interface Project {
   _id: string;
