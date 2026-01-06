@@ -17,6 +17,7 @@ import type * as github from "../github.js";
 import type * as http from "../http.js";
 import type * as progress from "../progress.js";
 import type * as projects from "../projects.js";
+import type * as quizGen from "../quizGen.js";
 import type * as quizzes from "../quizzes.js";
 import type * as router from "../router.js";
 import type * as team from "../team.js";
@@ -39,6 +40,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   progress: typeof progress;
   projects: typeof projects;
+  quizGen: typeof quizGen;
   quizzes: typeof quizzes;
   router: typeof router;
   team: typeof team;

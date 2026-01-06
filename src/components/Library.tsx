@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Book } from "lucide-react";
 import JSZip from "jszip";
-import { useQuery } from "convex/react";
-import { useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { pdfjs } from "react-pdf";
@@ -74,6 +73,7 @@ export default function Library({ bookToOpen, onStartQuiz }: LibraryProps) {
   const [error, setError] = useState<string | null>(null);
 
   const upsertBookAndChapters = useMutation(api.progress.upsertBookAndChapters);
+  const generateQuizForChapter = useAction(api.quizGen.generateQuizForChapter);
 
   // Fetch chapter and quiz data when PDF is selected
   const chapterData = useQuery(
@@ -88,6 +88,30 @@ export default function Library({ bookToOpen, onStartQuiz }: LibraryProps) {
       ? { chapterId: chapterData.chapter._id }
       : "skip"
   );
+
+  const bookProgress = useQuery(
+    api.progress.getBookProgress,
+    selectedZip ? { bookPath: selectedZip.path } : "skip"
+  );
+
+  const completedPdfPathSet = (() => {
+    const normalize = (value: string) =>
+      value.replace(/\\/g, "/").replace(/^\/+/, "").toLowerCase();
+
+    const basename = (value: string) => {
+      const unified = value.replace(/\\/g, "/");
+      const parts = unified.split("/").filter(Boolean);
+      return (parts[parts.length - 1] ?? unified).toLowerCase();
+    };
+
+    const set = new Set<string>();
+    for (const chapter of bookProgress?.chapters ?? []) {
+      if (!chapter.completed) continue;
+      set.add(normalize(chapter.chapterPath));
+      set.add(basename(chapter.chapterPath));
+    }
+    return set;
+  })();
 
   useEffect(() => {
     if (!selectedZip || !selectedPdf) return;
@@ -339,6 +363,11 @@ export default function Library({ bookToOpen, onStartQuiz }: LibraryProps) {
     onStartQuiz?.(quizData.quiz._id);
   };
 
+  const handleGenerateQuiz = async (chapterId: string) => {
+    const result = await generateQuizForChapter({ chapterId: chapterId as any });
+    onStartQuiz?.(result.quizId);
+  };
+
   const goBack = () => {
     if (currentPath.length > 1) {
       navigateToFolder(currentPath.slice(0, -1));
@@ -383,6 +412,7 @@ export default function Library({ bookToOpen, onStartQuiz }: LibraryProps) {
         chapterId={chapterData?.chapter?._id}
         hasQuiz={!!quizData?.quiz}
         onStartQuiz={handleStartQuiz}
+        onGenerateQuiz={handleGenerateQuiz}
       />
     );
   }
@@ -466,7 +496,12 @@ export default function Library({ bookToOpen, onStartQuiz }: LibraryProps) {
                 ← Back to files
               </button>
             </div>
-            <PDFList pdfs={pdfs} onView={handlePdfView} onDownload={handlePdfDownload} />
+            <PDFList
+              pdfs={pdfs}
+              onView={handlePdfView}
+              onDownload={handlePdfDownload}
+              completedPdfPaths={completedPdfPathSet}
+            />
           </div>
         )}
 

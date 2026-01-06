@@ -24,6 +24,7 @@ interface PDFViewerProps {
   chapterId?: string;
   hasQuiz: boolean;
   onStartQuiz: (chapterId: string) => void;
+  onGenerateQuiz?: (chapterId: string) => Promise<void>;
 }
 
 export default function PDFViewer({
@@ -39,6 +40,7 @@ export default function PDFViewer({
   chapterId,
   hasQuiz,
   onStartQuiz,
+  onGenerateQuiz,
 }: PDFViewerProps) {
   const debug = (...args: any[]) => {
     try {
@@ -318,6 +320,24 @@ export default function PDFViewer({
                     : " (This PDF isn't linked to a chapter record yet, so progress/XP can't be recorded.)"}
                 </p>
                 <div className="flex gap-3 justify-end">
+                  {chapterId && onGenerateQuiz && (
+                    <button
+                      onClick={() => {
+                        debug("modal: generate-quiz clicked", { chapterId });
+                        void (async () => {
+                          try {
+                            await onGenerateQuiz(chapterId);
+                            setShowQuizModal(false);
+                          } catch (e) {
+                            debug("generate quiz failed", e);
+                          }
+                        })();
+                      }}
+                      className="px-4 py-2 text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700 rounded-lg transition"
+                    >
+                      Generate Quiz
+                    </button>
+                  )}
                   <button
                     onClick={() => setShowQuizModal(false)}
                     className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition"

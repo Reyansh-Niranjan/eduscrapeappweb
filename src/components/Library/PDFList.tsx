@@ -1,4 +1,4 @@
-import { FileText, Eye, Download } from "lucide-react";
+import { FileText, Eye, Download, Star } from "lucide-react";
 
 interface PDFFile {
   name: string;
@@ -12,9 +12,10 @@ interface PDFListProps {
   pdfs: PDFFile[];
   onView: (pdf: PDFFile) => void;
   onDownload: (pdf: PDFFile) => void;
+  completedPdfPaths?: Set<string>;
 }
 
-export default function PDFList({ pdfs, onView, onDownload }: PDFListProps) {
+export default function PDFList({ pdfs, onView, onDownload, completedPdfPaths }: PDFListProps) {
   if (pdfs.length === 0) {
     return (
       <div className="text-center py-12" style={{ color: 'var(--theme-text-secondary)' }}>
@@ -27,6 +28,14 @@ export default function PDFList({ pdfs, onView, onDownload }: PDFListProps) {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {pdfs.map((pdf, index) => (
+        (() => {
+          const zipPath = (pdf as any).zipPath as string | undefined;
+          const normalize = (value: string) => value.replace(/\\/g, "/").replace(/^\/+/, "").toLowerCase();
+          const isCompleted =
+            !!completedPdfPaths &&
+            (completedPdfPaths.has(normalize(zipPath ?? pdf.name)) || completedPdfPaths.has((pdf.name ?? "").toLowerCase()));
+
+          return (
         <div
           key={index}
           className="p-4 border-2 border-orange-200 dark:border-orange-700 bg-orange-50 dark:bg-orange-900/30 rounded-lg hover:border-orange-400 dark:hover:border-orange-500 hover:shadow-md transition group"
@@ -34,9 +43,14 @@ export default function PDFList({ pdfs, onView, onDownload }: PDFListProps) {
           <div className="flex items-start gap-3">
             <FileText className="h-8 w-8 text-orange-600 dark:text-orange-400 flex-shrink-0 group-hover:scale-110 transition-transform" />
             <div className="flex-1 min-w-0">
-              <h3 className="font-medium truncate mb-3" style={{ color: 'var(--theme-text)' }} title={pdf.name}>
-                {pdf.name.replace('.pdf', '')}
-              </h3>
+              <div className="flex items-start justify-between gap-2 mb-3">
+                <h3 className="font-medium truncate" style={{ color: 'var(--theme-text)' }} title={pdf.name}>
+                  {pdf.name.replace('.pdf', '')}
+                </h3>
+                {isCompleted && (
+                  <Star className="h-4 w-4 text-yellow-500 flex-shrink-0" fill="currentColor" aria-label="Completed" />
+                )}
+              </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => onView(pdf)}
@@ -55,6 +69,8 @@ export default function PDFList({ pdfs, onView, onDownload }: PDFListProps) {
             </div>
           </div>
         </div>
+          );
+        })()
       ))}
     </div>
   );

@@ -80,6 +80,65 @@ function safeParseJson(input: string): any {
   }
 }
 
+export const createGeneratedQuizInternal = internalMutation({
+  args: {
+    chapterId: v.id("chapters"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    passingScore: v.number(),
+    timeLimit: v.optional(v.number()),
+    maxAttempts: v.optional(v.number()),
+    questions: v.array(
+      v.object({
+        question: v.string(),
+        type: v.union(
+          v.literal("multiple_choice"),
+          v.literal("true_false"),
+          v.literal("short_answer")
+        ),
+        options: v.optional(v.array(v.string())),
+        correctAnswer: v.string(),
+        explanation: v.optional(v.string()),
+        points: v.number(),
+      })
+    ),
+  },
+  returns: v.object({ quizId: v.id("quizzes") }),
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("quizzes")
+      .withIndex("by_chapter", (q) => q.eq("chapterId", args.chapterId))
+      .unique();
+
+    if (existing) {
+      return { quizId: existing._id };
+    }
+
+    const quizId = await ctx.db.insert("quizzes", {
+      chapterId: args.chapterId,
+      title: args.title,
+      description: args.description,
+      passingScore: args.passingScore,
+      timeLimit: args.timeLimit,
+      maxAttempts: args.maxAttempts,
+    });
+
+    for (const q of args.questions) {
+      await ctx.db.insert("quizQuestions", {
+        quizId,
+        question: q.question,
+        type: q.type,
+        options: q.options,
+        correctAnswer: q.correctAnswer,
+        explanation: q.explanation,
+        points: q.points,
+      });
+    }
+
+    return { quizId };
+  },
+});
+
 // Start quiz attempt
 export const startQuizAttempt = mutation({
   args: { quizId: v.id("quizzes") },
@@ -551,6 +610,7 @@ export const getQuizByChapter = query({
   args: { chapterId: v.id("chapters") },
   returns: v.object({
     quiz: v.optional(v.object({
+      _creationTime: v.number(),
       _id: v.id("quizzes"),
       title: v.string(),
       description: v.optional(v.string()),

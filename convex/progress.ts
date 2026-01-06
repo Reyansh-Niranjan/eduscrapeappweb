@@ -472,3 +472,45 @@ export const upsertBookAndChapters = mutation({
     return { bookCreated, chaptersInserted, chaptersExisting };
   },
 });
+
+// Get chapter + its book metadata (used by quiz generation).
+export const getChapterWithBook = query({
+  args: { chapterId: v.id("chapters") },
+  returns: v.object({
+    chapter: v.optional(
+      v.object({
+        _creationTime: v.number(),
+        _id: v.id("chapters"),
+        bookPath: v.string(),
+        pdfPath: v.string(),
+        identifiedTitle: v.optional(v.string()),
+        isSupplementary: v.boolean(),
+        grade: v.string(),
+      })
+    ),
+    book: v.optional(
+      v.object({
+        _creationTime: v.number(),
+        _id: v.id("books"),
+        path: v.string(),
+        grade: v.string(),
+        subject: v.string(),
+        title: v.string(),
+        totalChapters: v.number(),
+        estimatedReadTime: v.optional(v.number()),
+        url: v.string(),
+      })
+    ),
+  }),
+  handler: async (ctx, args) => {
+    const chapter = await ctx.db.get(args.chapterId);
+    if (!chapter) return { chapter: undefined, book: undefined };
+
+    const book = await ctx.db
+      .query("books")
+      .withIndex("by_path", (q) => q.eq("path", chapter.bookPath))
+      .unique();
+
+    return { chapter: chapter as any, book: (book as any) || undefined };
+  },
+});
