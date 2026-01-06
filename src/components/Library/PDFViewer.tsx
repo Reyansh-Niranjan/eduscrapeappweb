@@ -3,6 +3,7 @@ import { Download, ExternalLink } from "lucide-react";
 import { Document, Page } from "react-pdf";
 import { useAction, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { toast } from "sonner";
 
 interface PDFFile {
   name: string;
@@ -57,6 +58,7 @@ export default function PDFViewer({
   const [showQuizModal, setShowQuizModal] = useState(false);
   const [viewerOpenedAt, setViewerOpenedAt] = useState<number>(() => Date.now());
   const [chapterCompletionAttempted, setChapterCompletionAttempted] = useState(false);
+  const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
 
   const renderPdfPageFromUrl = useAction(api.deepsearch.renderPdfPageFromUrl);
   const markChapterCompleted = useMutation(api.progress.markChapterCompleted);
@@ -326,16 +328,31 @@ export default function PDFViewer({
                         debug("modal: generate-quiz clicked", { chapterId });
                         void (async () => {
                           try {
+                            setIsGeneratingQuiz(true);
+                            toast.info("Generating quiz, please wait...");
                             await onGenerateQuiz(chapterId);
                             setShowQuizModal(false);
+                            toast.success("Quiz generated successfully!");
                           } catch (e) {
                             debug("generate quiz failed", e);
+                            const errorMsg = e instanceof Error ? e.message : "Failed to generate quiz";
+                            toast.error(errorMsg);
+                          } finally {
+                            setIsGeneratingQuiz(false);
                           }
                         })();
                       }}
-                      className="px-4 py-2 text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700 rounded-lg transition"
+                      disabled={isGeneratingQuiz}
+                      className="px-4 py-2 text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                     >
-                      Generate Quiz
+                      {isGeneratingQuiz ? (
+                        <>
+                          <span className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-gray-700 dark:border-gray-200"></span>
+                          Generating...
+                        </>
+                      ) : (
+                        "Generate Quiz"
+                      )}
                     </button>
                   )}
                   <button

@@ -364,8 +364,13 @@ export default function Library({ bookToOpen, onStartQuiz }: LibraryProps) {
   };
 
   const handleGenerateQuiz = async (chapterId: string) => {
-    const result = await generateQuizForChapter({ chapterId: chapterId as any });
-    onStartQuiz?.(result.quizId);
+    try {
+      const result = await generateQuizForChapter({ chapterId: chapterId as any });
+      onStartQuiz?.(result.quizId);
+    } catch (error) {
+      console.error("Quiz generation error:", error);
+      throw error; // Re-throw to let PDFViewer handle the toast
+    }
   };
 
   const goBack = () => {

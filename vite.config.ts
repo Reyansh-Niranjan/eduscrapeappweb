@@ -56,6 +56,10 @@ window.addEventListener('message', async (message) => {
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // Workaround: some installs of framer-motion can be missing the ESM entry
+      // file (dist/es/index.mjs) even though package.json points to it.
+      // Aliasing to the CJS entry keeps Vite builds working.
+      "framer-motion": path.resolve(__dirname, "./node_modules/framer-motion/dist/cjs/index.js"),
     },
   },
   server: {
