@@ -195,7 +195,7 @@ export const generateQuizForChapter = action({
         .filter((k) => k.toLowerCase().endsWith(".pdf"))
         .filter((k) => basename(k).toLowerCase() === wantedBase);
       if (candidates.length > 0) {
-        entry = zip.file(candidates[0]!) ?? null;
+        entry = zip.file(candidates[0]) ?? null;
       }
     }
 
