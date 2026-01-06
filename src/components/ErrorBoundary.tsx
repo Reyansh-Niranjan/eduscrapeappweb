@@ -8,6 +8,7 @@ interface ErrorBoundaryProps {
 interface ErrorBoundaryState {
   hasError: boolean;
   error?: Error;
+  didAutoReload?: boolean;
 }
 
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
@@ -22,10 +23,40 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Error caught by boundary:', error, errorInfo);
+
+    // A very common production-only failure mode is a transient dynamic-import/chunk load error
+    // after a deployment or during flaky network conditions. Auto-reload once per tab session.
+    const message = String((error as any)?.message ?? '');
+    const looksLikeChunkLoadFailure =
+      /ChunkLoadError|Loading chunk\s+\d+\s+failed|Failed to fetch dynamically imported module|Importing a module script failed/i.test(
+        message
+      );
+
+    if (looksLikeChunkLoadFailure) {
+      try {
+        const key = 'eduscrape:autoReloadedAfterChunkError';
+        const alreadyReloaded = sessionStorage.getItem(key) === '1';
+        if (!alreadyReloaded) {
+          sessionStorage.setItem(key, '1');
+          this.setState({ didAutoReload: true });
+          window.setTimeout(() => window.location.reload(), 250);
+        }
+      } catch {
+        // If sessionStorage is blocked, don't risk a reload loop.
+      }
+    }
   }
 
   render() {
     if (this.state.hasError) {
+      const showDebugDetails = (() => {
+        try {
+          return new URLSearchParams(window.location.search).get('debug') === '1';
+        } catch {
+          return false;
+        }
+      })();
+
       return this.props.fallback || (
         <div className="min-h-screen bg-gradient-to-br from-purple-900 via-gray-900 to-teal-900 flex items-center justify-center p-6">
           <div className="bg-gradient-to-br from-purple-800/20 to-teal-800/20 backdrop-blur-sm border border-purple-500/30 rounded-2xl p-8 max-w-md text-center">
@@ -36,8 +67,18 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             </div>
             <h1 className="text-2xl font-bold text-white mb-4">Something went wrong</h1>
             <p className="text-gray-300 mb-6">
-              We encountered an unexpected error. Please refresh the page or try again later.
+              {this.state.didAutoReload
+                ? "We hit a loading error. Reloading…"
+                : "We encountered an unexpected error. Please refresh the page or try again later."}
             </p>
+
+            {showDebugDetails && this.state.error?.message ? (
+              <div className="mb-6 rounded-lg border border-purple-500/30 bg-black/30 p-3 text-left">
+                <div className="text-xs font-semibold text-gray-200 mb-1">Debug</div>
+                <div className="text-xs text-gray-300 break-words">{this.state.error.message}</div>
+              </div>
+            ) : null}
+
             <button
               onClick={() => window.location.reload()}
               className="bg-gradient-to-r from-teal-500 to-purple-600 text-white py-2 px-6 rounded-lg font-semibold hover:from-teal-600 hover:to-purple-700 transition-all duration-300"
