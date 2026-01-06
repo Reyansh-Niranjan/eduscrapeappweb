@@ -82,21 +82,25 @@ export default function Team() {
           {displayTeam.map((member: any) => (
             <div
               key={member._id}
-              className="group bg-gradient-to-br from-purple-800/20 to-teal-800/20 backdrop-blur-sm border border-purple-500/30 rounded-2xl p-6 hover:border-teal-400/50 transition-all duration-300 transform hover:scale-105 text-center"
+              className="group card rounded-2xl text-center transition-all duration-300 transform hover:scale-[1.02]"
+              style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
             >
+              <div className="h-1 w-16 mx-auto rounded-full bg-gradient-to-r from-teal-400 to-purple-500 mb-6" />
               <div className="mb-6">
                 {member.imageUrl ? (
-                  <div className="w-24 h-24 mx-auto mb-4 rounded-full overflow-hidden border-4 border-gradient-to-r from-teal-400 to-purple-500">
-                    <OptimizedImage
-                      src={member.imageUrl}
-                      alt={member.name}
-                      className="w-full h-full rounded-full"
-                      loading="lazy"
-                      fetchPriority="low"
-                      sizes="96px"
-                      width={96}
-                      height={96}
-                    />
+                  <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-r from-teal-400 to-purple-500 p-1">
+                    <div className="w-full h-full rounded-full overflow-hidden" style={{ background: 'var(--theme-bg-secondary)' }}>
+                      <OptimizedImage
+                        src={member.imageUrl}
+                        alt={member.name}
+                        className="w-full h-full rounded-full"
+                        loading="lazy"
+                        fetchPriority="low"
+                        sizes="96px"
+                        width={96}
+                        height={96}
+                      />
+                    </div>
                   </div>
                 ) : (
                   <div className="w-24 h-24 bg-gradient-to-r from-teal-400 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -111,7 +115,7 @@ export default function Team() {
                 {member.name}
               </h3>
 
-              <p className="text-teal-400 font-semibold mb-3">
+              <p className="text-teal-600 dark:text-teal-400 font-semibold mb-3">
                 {member.role}
               </p>
 

@@ -1,8 +1,5 @@
 ﻿node_modules/
 dist/
-.env
-.env.*
-!.env.production
 .DS_Store
 
 # Build artifacts

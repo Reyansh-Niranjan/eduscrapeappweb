@@ -45,8 +45,8 @@
 - ✅ Admin and login pages excluded from search indexing
 
 #### 6. Environment Configuration
-- ✅ Created `.env.production` with proper Vite environment variables
-- ✅ Updated `.gitignore` with comprehensive ignore patterns
+- ✅ Added guidance for environment variables (use a local `.env` / `.env.production` that is **not committed**)
+- ✅ Updated `.gitignore` to avoid committing env files
 
 #### 7. Build Artifacts (.gitignore)
 - ✅ Added proper ignore patterns for build artifacts

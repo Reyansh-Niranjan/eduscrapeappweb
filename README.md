@@ -13,6 +13,7 @@
   <a href="#key-features">Key Features</a> •
   <a href="#how-it-works">How It Works</a> •
   <a href="#technology-stack">Tech Stack</a> •
+  <a href="./SETUP.md">Setup</a> •
   <a href="#the-team">Team</a>
 </p>
 
@@ -66,6 +67,11 @@ An intelligent chatbot assistant that helps users:
 - **Get Recommendations** - Receive personalized content suggestions based on grade and interests
 - **Web Search Integration** - Access real-time information from the web
 - **Context-Aware Responses** - The AI understands your current grade and location in the app
+
+The assistant is implemented as a **server-side Convex action** using OpenRouter:
+- A lightweight router decides whether tools are needed
+- If tools are needed, the tool model calls `web_search`, `book_search`, and `open_chapter`
+- A writer model produces the final user-facing response **without** calling tools
 
 ### 👤 User Profiles & Personalization
 
@@ -147,7 +153,7 @@ For administrators and content managers:
 
 ### External Services
 - **Firebase Hosting** - Educational content delivery (https://eduscrape-host.web.app)
-- **OpenRouter API** - AI chatbot powered by Claude 3.5 Sonnet
+- **OpenRouter API** - AI chatbot with tool-calling + writer model flow (configurable)
 
 ---
 

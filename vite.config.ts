@@ -29,11 +29,11 @@ export default defineConfig(({ mode }) => ({
     // Feel free to remove this code if you're no longer developing your app with Chef.
     mode === "development"
       ? {
-          name: "inject-chef-dev",
-          transform(code: string, id: string) {
-            if (id.includes("main.tsx")) {
-              return {
-                code: `${code}
+        name: "inject-chef-dev",
+        transform(code: string, id: string) {
+          if (id.includes("main.tsx")) {
+            return {
+              code: `${code}
 
 /* Added by Vite plugin inject-chef-dev */
 window.addEventListener('message', async (message) => {
@@ -44,12 +44,12 @@ window.addEventListener('message', async (message) => {
   await worker.respondToMessage(message);
 });
             `,
-                map: null,
-              };
-            }
-            return null;
-          },
-        }
+              map: null,
+            };
+          }
+          return null;
+        },
+      }
       : null,
     // End of code for taking screenshots on chef.convex.dev.
   ].filter(Boolean),
@@ -67,5 +67,8 @@ window.addEventListener('message', async (message) => {
         secure: true,
       },
     },
+  },
+  optimizeDeps: {
+    exclude: ['pdfjs-dist'],
   },
 }));

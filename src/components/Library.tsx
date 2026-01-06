@@ -2,19 +2,20 @@ import { useState, useEffect, useCallback } from "react";
 import { Book } from "lucide-react";
 import JSZip from "jszip";
 import { useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 import { pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
-import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
-import AIAssistant from "./AIAssistant";
 import PDFViewer from "./Library/PDFViewer";
 import Breadcrumb from "./Library/Breadcrumb";
 import PDFList from "./Library/PDFList";
 import FolderBrowser from "./Library/FolderBrowser";
 import ProgressBar from "./Library/ProgressBar";
 
-pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
+// Configure PDF.js worker and options
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 interface ZipInfo {
   name: string;
@@ -30,15 +31,31 @@ interface PDFFile {
   name: string;
   url: string;
   blob: Blob;
+  // Full path inside the selected ZIP (e.g. "Unit1/Chapter2.pdf").
+  // Needed so backend can map PDFs to chapters reliably.
+  zipPath?: string;
+  // Original remote URL (for on-demand server-side page rendering).
+  sourceUrl?: string;
 }
 
 interface LibraryProps {
   bookToOpen?: { path: string; name: string } | null;
+  onStartQuiz?: (quizId: Id<"quizzes">) => void;
 }
 
 const BASE_URL = "https://eduscrape-host.web.app";
 
-export default function Library({ bookToOpen }: LibraryProps) {
+export default function Library({ bookToOpen, onStartQuiz }: LibraryProps) {
+  const debug = (...args: any[]) => {
+    try {
+      if (typeof import.meta !== "undefined" && (import.meta as any).env?.DEV) {
+        console.debug("[Library]", ...args);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   const userProfile = useQuery(api.userProfiles.getMyProfile);
   const [userGrade, setUserGrade] = useState<string>("Class1");
   const [structure, setStructure] = useState<FolderStructure | null>(null);
@@ -55,6 +72,51 @@ export default function Library({ bookToOpen }: LibraryProps) {
     current: 0, total: 0, stage: '' 
   });
   const [error, setError] = useState<string | null>(null);
+
+  const upsertBookAndChapters = useMutation(api.progress.upsertBookAndChapters);
+
+  // Fetch chapter and quiz data when PDF is selected
+  const chapterData = useQuery(
+    api.progress.getChapterByPath,
+    selectedZip && selectedPdf
+      ? { bookPath: selectedZip.path, pdfPath: selectedPdf.zipPath ?? selectedPdf.name }
+      : "skip"
+  );
+  const quizData = useQuery(
+    api.quizzes.getQuizByChapter,
+    chapterData?.chapter?._id
+      ? { chapterId: chapterData.chapter._id }
+      : "skip"
+  );
+
+  useEffect(() => {
+    if (!selectedZip || !selectedPdf) return;
+    debug("selected pdf", {
+      zipPath: selectedZip.path,
+      pdfName: selectedPdf.name,
+      pdfZipPath: selectedPdf.zipPath,
+      pdfSourceUrl: (selectedPdf as any).sourceUrl,
+    });
+  }, [selectedZip, selectedPdf]);
+
+  useEffect(() => {
+    if (!selectedZip || !selectedPdf) return;
+    debug("chapter lookup", {
+      bookPath: selectedZip.path,
+      pdfPathSent: selectedPdf.zipPath ?? selectedPdf.name,
+      chapterId: chapterData?.chapter?._id,
+      chapterPdfPath: chapterData?.chapter?.pdfPath,
+    });
+  }, [selectedZip, selectedPdf, chapterData]);
+
+  useEffect(() => {
+    if (!selectedZip || !selectedPdf) return;
+    debug("quiz lookup", {
+      chapterId: chapterData?.chapter?._id,
+      hasQuiz: !!quizData?.quiz,
+      quizId: quizData?.quiz?._id,
+    });
+  }, [selectedZip, selectedPdf, chapterData?.chapter?._id, quizData?.quiz]);
 
   // Set user grade from profile when available
   useEffect(() => {
@@ -198,6 +260,7 @@ export default function Library({ bookToOpen }: LibraryProps) {
       
       const zip = await JSZip.loadAsync(chunksAll);
       const pdfFiles: PDFFile[] = [];
+      const pdfPathsInZip: string[] = [];
       const zipEntries = Object.entries(zip.files);
       const totalFiles = zipEntries.length;
 
@@ -208,7 +271,9 @@ export default function Library({ bookToOpen }: LibraryProps) {
           const pdfUrl = URL.createObjectURL(pdfBlob);
           const parts = filename.split('/');
           const name = parts[parts.length - 1] ?? filename;
-          pdfFiles.push({ name, url: pdfUrl, blob: pdfBlob });
+          pdfFiles.push({ name, url: pdfUrl, blob: pdfBlob, zipPath: filename });
+          pdfPathsInZip.push(filename);
+          debug("zip pdf found", { zip: zipInfo.path, name, zipPath: filename });
         }
         extractedCount++;
         setProgress({ 
@@ -220,6 +285,18 @@ export default function Library({ bookToOpen }: LibraryProps) {
 
       setPdfs(pdfFiles);
       setProgress({ current: pdfFiles.length, total: pdfFiles.length, stage: `Ready! ${pdfFiles.length} PDFs found` });
+
+      // Create/refresh the book+chapters mapping in Convex so PDFs link to chapters.
+      try {
+        await upsertBookAndChapters({
+          bookPath: zipInfo.path,
+          url: zipInfo.url,
+          pdfPaths: pdfPathsInZip,
+        });
+        debug("upsertBookAndChapters done", { bookPath: zipInfo.path, count: pdfPathsInZip.length });
+      } catch (e) {
+        debug("upsertBookAndChapters failed", e);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to process ZIP file");
     } finally {
@@ -250,6 +327,18 @@ export default function Library({ bookToOpen }: LibraryProps) {
     setPageNumber(1);
   };
 
+  const handleStartQuiz = (chapterId: string) => {
+    void chapterId;
+    if (!quizData?.quiz?._id) {
+      setError("No quiz available for this chapter");
+      return;
+    }
+
+    // Let the Quiz screen create the attempt. Starting it here causes a double-start
+    // and can block the Quiz component with "Complete your previous attempt first".
+    onStartQuiz?.(quizData.quiz._id);
+  };
+
   const goBack = () => {
     if (currentPath.length > 1) {
       navigateToFolder(currentPath.slice(0, -1));
@@ -270,7 +359,7 @@ export default function Library({ bookToOpen }: LibraryProps) {
       setViewerError(null);
       setNumPages(null);
       setPageNumber(1);
-      setSelectedPdf({ name: pdfName, url, blob });
+      setSelectedPdf({ name: pdfName, url, blob, sourceUrl: pdfUrl });
     } catch (err) {
       setError("Failed to load PDF");
     }
@@ -291,6 +380,9 @@ export default function Library({ bookToOpen }: LibraryProps) {
         onLoadError={setViewerError}
         onDownload={() => handlePdfDownload(selectedPdf)}
         onClose={closePdfViewer}
+        chapterId={chapterData?.chapter?._id}
+        hasQuiz={!!quizData?.quiz}
+        onStartQuiz={handleStartQuiz}
       />
     );
   }
@@ -411,25 +503,6 @@ export default function Library({ bookToOpen }: LibraryProps) {
           </div>
         )}
       </div>
-
-      <AIAssistant 
-        userContext={{
-          grade: userGrade,
-          currentPage: "library",
-          currentBook: selectedZip?.name,
-          currentFolder: currentPath.join('/'),
-        }}
-        onBookOpen={(book) => {
-          const pathParts = book.path.split('/').filter(p => p);
-          if (pathParts.length > 0) {
-            const folderPath = pathParts.slice(0, -1);
-            if (folderPath.length > 0) navigateToFolder(folderPath);
-            const bookName = pathParts[pathParts.length - 1];
-            const zipUrl = `${BASE_URL}/${book.path}`;
-            handleZipSelect({ name: bookName, path: book.path, url: zipUrl });
-          }
-        }}
-      />
     </div>
   );
 }

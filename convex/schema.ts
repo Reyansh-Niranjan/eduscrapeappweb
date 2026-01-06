@@ -59,6 +59,103 @@ const applicationTables = {
   })
     .index("by_user", ["userId"])
     .index("by_role", ["role"]),
+
+  // Progress tracking tables
+  books: defineTable({
+    path: v.string(), // ZIP file path (e.g., "Class10/Maths/Maths.zip")
+    grade: v.string(), // Class1-Class12
+    subject: v.string(), // Maths, Science, English, etc.
+    title: v.string(), // Derived from filename (e.g., "Maths")
+    totalChapters: v.number(), // Populated after scanning ZIP
+    estimatedReadTime: v.optional(v.number()), // minutes
+    url: v.string(), // Full Firebase URL
+  })
+    .index("by_grade", ["grade"])
+    .index("by_path", ["path"])
+    .index("by_grade_subject", ["grade", "subject"]),
+
+  chapters: defineTable({
+    bookPath: v.string(), // Reference to books.path
+    pdfPath: v.string(), // Path within ZIP (e.g., "Chapter1.pdf")
+    identifiedTitle: v.optional(v.string()), // AI-identified chapter title
+    isSupplementary: v.boolean(), // AI-determined: exclude index/PS files
+    grade: v.string(), // Inherited from book
+  })
+    .index("by_book", ["bookPath"])
+    .index("by_grade", ["grade"]),
+
+  userProgress: defineTable({
+    userId: v.id("users"),
+    totalXP: v.number(),
+    booksCompleted: v.number(),
+    chaptersCompleted: v.number(),
+    quizzesPassed: v.number(),
+    currentStreak: v.number(),
+    longestStreak: v.number(),
+    lastActivity: v.number(), // timestamp
+  })
+    .index("by_user", ["userId"]),
+
+  chapterProgress: defineTable({
+    userId: v.id("users"),
+    chapterId: v.id("chapters"),
+    completed: v.boolean(),
+    completedAt: v.optional(v.number()),
+    timeSpent: v.number(), // seconds
+    pagesRead: v.number(),
+    totalPages: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_chapter", ["chapterId"])
+    .index("by_user_chapter", ["userId", "chapterId"]),
+
+  // Quiz tables
+  quizzes: defineTable({
+    chapterId: v.id("chapters"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    passingScore: v.number(), // percentage 0-100
+    timeLimit: v.optional(v.number()), // minutes
+    maxAttempts: v.optional(v.number()),
+  })
+    .index("by_chapter", ["chapterId"]),
+
+  quizQuestions: defineTable({
+    quizId: v.id("quizzes"),
+    question: v.string(),
+    type: v.union(v.literal("multiple_choice"), v.literal("true_false"), v.literal("short_answer")),
+    options: v.optional(v.array(v.string())), // for multiple choice
+    correctAnswer: v.string(),
+    explanation: v.optional(v.string()),
+    points: v.number(),
+  })
+    .index("by_quiz", ["quizId"]),
+
+  quizAttempts: defineTable({
+    userId: v.id("users"),
+    quizId: v.id("quizzes"),
+    attemptNumber: v.number(),
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+    score: v.optional(v.number()), // percentage
+    totalPoints: v.optional(v.number()),
+    earnedPoints: v.optional(v.number()),
+    passed: v.optional(v.boolean()),
+    timeSpent: v.optional(v.number()), // seconds
+  })
+    .index("by_user", ["userId"])
+    .index("by_quiz", ["quizId"])
+    .index("by_user_quiz", ["userId", "quizId"]),
+
+  quizAnswers: defineTable({
+    attemptId: v.id("quizAttempts"),
+    questionId: v.id("quizQuestions"),
+    userAnswer: v.string(),
+    isCorrect: v.boolean(),
+    pointsEarned: v.number(),
+    timeSpent: v.optional(v.number()), // seconds on this question
+  })
+    .index("by_attempt", ["attemptId"]),
 };
 
 export default defineSchema({

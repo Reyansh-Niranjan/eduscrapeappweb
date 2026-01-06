@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import ThemeToggle from './ThemeToggle';
 
 export default function Header() {
@@ -12,7 +13,7 @@ export default function Header() {
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
+  
   const scrollToSection = useCallback((sectionId: string) => {
     const element = document.getElementById(sectionId);
     if (element) {
@@ -27,7 +28,17 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 transition-all duration-300" style={{ background: isScrolled ? 'var(--theme-nav-bg)' : 'rgba(var(--theme-nav-bg), 0.95)', borderBottom: isScrolled ? '1px solid var(--theme-border)' : 'none', boxShadow: isScrolled ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', backdropFilter: 'blur(8px)' }}>
+    <header
+      className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
+      style={{
+        background: 'var(--theme-nav-bg)',
+        borderBottom: isScrolled ? '1px solid var(--theme-border)' : 'none',
+        boxShadow: isScrolled ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+        borderBottomLeftRadius: 'var(--radius-xl)',
+        borderBottomRightRadius: 'var(--radius-xl)',
+        overflow: 'hidden',
+      }}
+    >
       <nav className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -36,63 +47,76 @@ export default function Header() {
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
-            <button
+          <motion.div
+            className="hidden md:flex items-center space-x-8"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <motion.button
               onClick={() => scrollToSection('home')}
-              className="transition-colors duration-200 font-medium"
+              className="font-medium"
               style={{ color: 'var(--theme-text-secondary)' }}
-              onMouseEnter={(e) => e.currentTarget.style.color = '#8B5CF6'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--theme-text-secondary)'}
+              whileHover={{ color: '#8B5CF6', y: -2 }}
+              transition={{ duration: 0.2 }}
             >
               Home
-            </button>
-            <button
+            </motion.button>
+            <motion.button
               onClick={() => scrollToSection('about')}
-              className="transition-colors duration-200 font-medium"
+              className="font-medium"
               style={{ color: 'var(--theme-text-secondary)' }}
-              onMouseEnter={(e) => e.currentTarget.style.color = '#8B5CF6'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--theme-text-secondary)'}
+              whileHover={{ color: '#8B5CF6', y: -2 }}
+              transition={{ duration: 0.2 }}
             >
               Why EduScrapeApp
-            </button>
-            <button
+            </motion.button>
+            <motion.button
               onClick={() => scrollToSection('projects')}
-              className="transition-colors duration-200 font-medium"
+              className="font-medium"
               style={{ color: 'var(--theme-text-secondary)' }}
-              onMouseEnter={(e) => e.currentTarget.style.color = '#8B5CF6'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--theme-text-secondary)'}
+              whileHover={{ color: '#8B5CF6', y: -2 }}
+              transition={{ duration: 0.2 }}
             >
               Features
-            </button>
-            <button
+            </motion.button>
+            <motion.button
               onClick={() => scrollToSection('team')}
-              className="transition-colors duration-200 font-medium"
+              className="font-medium"
               style={{ color: 'var(--theme-text-secondary)' }}
-              onMouseEnter={(e) => e.currentTarget.style.color = '#8B5CF6'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--theme-text-secondary)'}
+              whileHover={{ color: '#8B5CF6', y: -2 }}
+              transition={{ duration: 0.2 }}
             >
               Team
-            </button>
-            <button
+            </motion.button>
+            <motion.button
               onClick={() => scrollToSection('updates')}
-              className="transition-colors duration-200 font-medium"
+              className="font-medium"
               style={{ color: 'var(--theme-text-secondary)' }}
-              onMouseEnter={(e) => e.currentTarget.style.color = '#8B5CF6'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--theme-text-secondary)'}
+              whileHover={{ color: '#8B5CF6', y: -2 }}
+              transition={{ duration: 0.2 }}
             >
               Updates
-            </button>
-          </div>
+            </motion.button>
+          </motion.div>
 
-          <div className="hidden md:flex items-center space-x-4">
+          <motion.div
+            className="hidden md:flex items-center space-x-4"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+          >
             <ThemeToggle />
-            <button
+            <motion.button
               onClick={() => navigateToHash('#login')}
               className="btn-primary"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ duration: 0.2 }}
             >
               Login
-            </button>
-          </div>
+            </motion.button>
+          </motion.div>
 
           {/* Mobile Menu Button */}
           <button
@@ -108,49 +132,68 @@ export default function Header() {
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden mt-4 pb-4 border-t border-gray-200 fade-in">
+          <motion.div
+            className="md:hidden mt-4 pb-4 border-t border-gray-200"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+          >
             <div className="flex flex-col space-y-3 pt-4">
-              <button
+              <motion.button
                 onClick={() => scrollToSection('home')}
                 className="text-gray-600 hover:text-purple-600 transition-colors duration-200 text-left font-medium"
+                whileHover={{ x: 5 }}
+                transition={{ duration: 0.2 }}
               >
                 Home
-              </button>
-              <button
+              </motion.button>
+              <motion.button
                 onClick={() => scrollToSection('about')}
                 className="text-gray-600 hover:text-purple-600 transition-colors duration-200 text-left font-medium"
+                whileHover={{ x: 5 }}
+                transition={{ duration: 0.2 }}
               >
                 Why EduScrapeApp
-              </button>
-              <button
+              </motion.button>
+              <motion.button
                 onClick={() => scrollToSection('projects')}
                 className="text-gray-600 hover:text-purple-600 transition-colors duration-200 text-left font-medium"
+                whileHover={{ x: 5 }}
+                transition={{ duration: 0.2 }}
               >
                 Features
-              </button>
-              <button
+              </motion.button>
+              <motion.button
                 onClick={() => scrollToSection('team')}
                 className="text-gray-600 hover:text-purple-600 transition-colors duration-200 text-left font-medium"
+                whileHover={{ x: 5 }}
+                transition={{ duration: 0.2 }}
               >
                 Team
-              </button>
-              <button
+              </motion.button>
+              <motion.button
                 onClick={() => scrollToSection('updates')}
                 className="text-gray-600 hover:text-purple-600 transition-colors duration-200 text-left font-medium"
+                whileHover={{ x: 5 }}
+                transition={{ duration: 0.2 }}
               >
                 Updates
-              </button>
+              </motion.button>
               <div className="pt-2">
                 <ThemeToggle />
               </div>
-              <button
+              <motion.button
                 onClick={() => navigateToHash('#login')}
                 className="btn-primary text-center"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                transition={{ duration: 0.2 }}
               >
                 Login
-              </button>
+              </motion.button>
             </div>
-          </div>
+          </motion.div>
         )}
       </nav>
     </header>

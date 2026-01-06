@@ -4,6 +4,8 @@ interface PDFFile {
   name: string;
   url: string;
   blob: Blob;
+  zipPath?: string;
+  sourceUrl?: string;
 }
 
 interface PDFListProps {

@@ -1,81 +1,527 @@
-import { useState, useMemo, memo } from "react";
-import Library from "./Library";
-import ProfileEdit from "./ProfileEdit";
+import { Suspense, lazy, useEffect, useMemo, useState, memo } from "react";
 import AIAssistant from "./AIAssistant";
 import ProfileCompletionBanner from "./ProfileCompletionBanner";
 import ThemeToggle from "./ThemeToggle";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { BookOpen, LayoutDashboard, UserCircle } from "lucide-react";
+import {
+  BookOpen,
+  LayoutDashboard,
+  UserCircle,
+  Trophy,
+  Target,
+  Zap,
+  Users,
+  Shield,
+  BarChart3,
+  FolderKanban,
+} from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
+import { motion } from "framer-motion";
+import { toast } from "sonner";
+
+const Library = lazy(() => import("./Library"));
+const ProfileEdit = lazy(() => import("./ProfileEdit"));
+
+function SectionLoader({ label }: { label: string }) {
+  return (
+    <div className="flex items-center justify-center min-h-[400px]">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto" />
+        <p className="mt-4" style={{ color: 'var(--theme-text-secondary)' }}>Loading {label}…</p>
+      </div>
+    </div>
+  );
+}
 
 interface DashboardProps {
   onLogout: () => void;
 }
 
+// Particle effect component
+const ParticleEffect = ({ trigger }: { trigger: boolean }) => {
+  const seeds = useMemo(
+    () =>
+      Array.from({ length: 20 }).map(() => ({
+        startX: Math.random() * 100 - 50,
+        startY: Math.random() * 100 - 50,
+        endX: Math.random() * 200 - 100,
+        endY: Math.random() * 200 - 100,
+      })),
+    [trigger]
+  );
+
+  if (!trigger) return null;
+
+  return (
+    <motion.div
+      className="absolute inset-0 pointer-events-none"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      {seeds.map((seed, i) => (
+        <motion.div
+          key={i}
+          className="absolute w-2 h-2 bg-purple-500 rounded-full"
+          initial={{
+            x: seed.startX,
+            y: seed.startY,
+            scale: 0,
+          }}
+          animate={{
+            x: seed.endX,
+            y: seed.endY,
+            scale: [0, 1, 0],
+          }}
+          transition={{
+            duration: 1,
+            delay: i * 0.05,
+          }}
+        />
+      ))}
+    </motion.div>
+  );
+};
+
 // Memoized Overview component to prevent unnecessary re-renders
-const DashboardOverview = memo(() => (
-  <div className="px-6 py-12">
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
-      <header className="card flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold" style={{ color: 'var(--theme-text)' }}>EduScrapeApp Dashboard</h1>
-          <p className="mt-2 text-sm" style={{ color: 'var(--theme-text-secondary)' }}>
-            Welcome to your workspace. Dashboard widgets and insights will appear here once we wire up the data sources.
-          </p>
-        </div>
-      </header>
+const DashboardOverview = memo(
+  ({
+    userName,
+    userRole,
+    grade,
+    userProgress,
+    onBrowseLibrary,
+    onViewProgress,
+    onStartSession,
+  }: {
+    userName?: string;
+    userRole?: string;
+    grade?: string;
+    userProgress?: {
+      totalXP: number;
+      booksCompleted: number;
+      chaptersCompleted: number;
+      quizzesPassed: number;
+      currentStreak: number;
+      longestStreak: number;
+      lastActivity: number;
+      completionPercentage: number;
+    };
+    onBrowseLibrary?: () => void;
+    onViewProgress?: () => void;
+    onStartSession?: () => void;
+  }) => {
+  const [showParticles, setShowParticles] = useState(false);
+  const role = (userRole || "student").toLowerCase();
+  const isAdmin = role.includes("admin");
+  const isTeacher = role.includes("teacher");
+  const isStudent = !isAdmin && !isTeacher;
 
-      <section className="grid gap-6 lg:grid-cols-3">
-        <div className="card hover-lift">
-          <h2 className="text-lg font-semibold" style={{ color: 'var(--theme-text)' }}>Quick actions</h2>
-          <p className="mt-2 text-sm" style={{ color: 'var(--theme-text-secondary)' }}>
-            Shortcuts for managing collections, teams, and automations will land here.
-          </p>
-        </div>
+  const completionPct =
+    typeof userProgress?.completionPercentage === "number"
+      ? Math.max(0, Math.min(100, Math.round(userProgress.completionPercentage)))
+      : null;
 
-        <div className="card hover-lift">
-          <h2 className="text-lg font-semibold" style={{ color: 'var(--theme-text)' }}>Recent activity</h2>
-          <p className="mt-2 text-sm" style={{ color: 'var(--theme-text-secondary)' }}>
-            Track the latest content imports, approvals, and workflow events once the pipeline is connected.
-          </p>
-        </div>
+  const lastActivityText = (() => {
+    const ts = userProgress?.lastActivity;
+    if (!ts || ts <= 0) return "No recent activity yet.";
+    try {
+      return `Last activity: ${new Date(ts).toLocaleString()}`;
+    } catch {
+      return "Last activity recorded.";
+    }
+  })();
 
-        <div className="card hover-lift">
-          <h2 className="text-lg font-semibold" style={{ color: 'var(--theme-text)' }}>Insights</h2>
-          <p className="mt-2 text-sm" style={{ color: 'var(--theme-text-secondary)' }}>
-            Analytics and engagement charts will be added soon to showcase impact at a glance.
-          </p>
-        </div>
-      </section>
+  const streakText = (() => {
+    const streak = userProgress?.currentStreak;
+    if (typeof streak !== "number") return "Start studying to build a streak.";
+    if (streak <= 0) return "Start a streak by studying today.";
+    return `Keep your ${streak}-day learning streak alive!`;
+  })();
 
-      <section className="card">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+  useEffect(() => {
+    if (!showParticles) return;
+    const t = window.setTimeout(() => setShowParticles(false), 1200);
+    return () => window.clearTimeout(t);
+  }, [showParticles]);
+
+  return (
+    <motion.div
+      className="px-6 py-12"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+    >
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
+        <motion.header
+          className="card flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
+          style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+          whileHover={{ y: -2 }}
+          transition={{ duration: 0.2 }}
+        >
           <div>
-            <h2 className="text-xl font-semibold" style={{ color: 'var(--theme-text)' }}>What's next?</h2>
-            <p className="text-sm" style={{ color: 'var(--theme-text-secondary)' }}>
-              We'll populate this dashboard with your institution's live data, automations, and curated collections.
-            </p>
+            <motion.h1
+              className="text-3xl font-bold"
+              style={{ color: 'var(--theme-text)' }}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              {isAdmin
+                ? "Admin Dashboard"
+                : isTeacher
+                  ? "Teacher Dashboard"
+                  : "Student Dashboard"}
+            </motion.h1>
+            <motion.p
+              className="mt-2 text-sm"
+              style={{ color: 'var(--theme-text-secondary)' }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+            >
+              {isAdmin
+                ? "Monitor the platform, manage users, and review analytics."
+                : isTeacher
+                  ? "Manage resources, track class insights, and collaborate with educators."
+                  : "Track progress, earn achievements, and access resources."}
+            </motion.p>
           </div>
-          <span className="inline-flex items-center rounded-full bg-teal-100 dark:bg-teal-900/30 px-3 py-1 text-xs font-semibold text-teal-700 dark:text-teal-400">
-            Coming soon
-          </span>
-        </div>
-      </section>
-    </div>
-  </div>
-));
+          <motion.div
+            className="flex items-center gap-2"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.6 }}
+          >
+            <Trophy className="w-5 h-5 text-yellow-500" />
+            <span className="text-sm font-medium" style={{ color: 'var(--theme-text-secondary)' }}>
+              {userName ? `${userName} • ` : ""}
+              {isAdmin ? "Admin" : isTeacher ? "Teacher" : `Grade ${grade || "—"}`}
+            </span>
+          </motion.div>
+        </motion.header>
+
+        {/* Role-Based Highlights */}
+        <motion.section
+          className="grid gap-6 lg:grid-cols-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          {isStudent && (
+          <motion.div
+            className="card text-center p-6"
+            style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+            whileHover={{ y: -5, scale: 1.02 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setShowParticles(true)}
+          >
+            <motion.div
+              className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-3"
+              whileHover={{ rotate: 360 }}
+              transition={{ duration: 0.5 }}
+            >
+              <Target className="w-6 h-6 text-white" />
+            </motion.div>
+            <h3 className="font-semibold mb-2" style={{ color: 'var(--theme-text)' }}>Learning Goals</h3>
+            <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+              <motion.div
+                className="bg-purple-500 h-2 rounded-full"
+                initial={{ width: 0 }}
+                animate={{ width: `${completionPct ?? 0}%` }}
+                transition={{ duration: 1, delay: 0.8 }}
+              />
+            </div>
+            <p className="text-xs" style={{ color: 'var(--theme-text-secondary)' }}>
+              {completionPct === null ? "—" : `${completionPct}% Complete`}
+            </p>
+            <ParticleEffect trigger={showParticles} />
+          </motion.div>
+          )}
+
+          {isStudent && (
+          <motion.div
+            className="card text-center p-6"
+            style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+            whileHover={{ y: -5, scale: 1.02 }}
+            transition={{ duration: 0.2 }}
+          >
+            <motion.div
+              className="w-12 h-12 bg-teal-500 rounded-full flex items-center justify-center mx-auto mb-3"
+              whileHover={{ scale: 1.1 }}
+            >
+              <Zap className="w-6 h-6 text-white" />
+            </motion.div>
+            <h3 className="font-semibold mb-2" style={{ color: 'var(--theme-text)' }}>XP Points</h3>
+            <motion.div
+              className="text-2xl font-bold text-teal-500"
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 1, type: "spring", stiffness: 200 }}
+            >
+              {typeof userProgress?.totalXP === "number" ? userProgress.totalXP.toLocaleString() : "—"}
+            </motion.div>
+            <p className="text-xs" style={{ color: 'var(--theme-text-secondary)' }}>Total</p>
+          </motion.div>
+          )}
+
+          {isStudent && (
+          <motion.div
+            className="card text-center p-6"
+            style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+            whileHover={{ y: -5, scale: 1.02 }}
+            transition={{ duration: 0.2 }}
+          >
+            <motion.div
+              className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-3"
+              whileHover={{ scale: 1.1, rotate: 5 }}
+            >
+              <BookOpen className="w-6 h-6 text-white" />
+            </motion.div>
+            <h3 className="font-semibold mb-2" style={{ color: 'var(--theme-text)' }}>Books Completed</h3>
+            <motion.div
+              className="text-2xl font-bold text-green-500"
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: 1.4 }}
+            >
+              {typeof userProgress?.booksCompleted === "number" ? userProgress.booksCompleted : "—"}
+            </motion.div>
+            <p className="text-xs" style={{ color: 'var(--theme-text-secondary)' }}>All time</p>
+          </motion.div>
+          )}
+
+          {isTeacher && (
+            <>
+              <motion.div
+                className="card text-center p-6"
+                style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+                whileHover={{ y: -5, scale: 1.02 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="w-12 h-12 bg-teal-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <FolderKanban className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--theme-text)' }}>Resource Hub</h3>
+                <p className="text-xs" style={{ color: 'var(--theme-text-secondary)' }}>Organize and share materials</p>
+              </motion.div>
+
+              <motion.div
+                className="card text-center p-6"
+                style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+                whileHover={{ y: -5, scale: 1.02 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Users className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--theme-text)' }}>Class Insights</h3>
+                <p className="text-xs" style={{ color: 'var(--theme-text-secondary)' }}>Track engagement trends</p>
+              </motion.div>
+
+              <motion.div
+                className="card text-center p-6"
+                style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+                whileHover={{ y: -5, scale: 1.02 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Zap className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--theme-text)' }}>Automation</h3>
+                <p className="text-xs" style={{ color: 'var(--theme-text-secondary)' }}>Keep curricula up to date</p>
+              </motion.div>
+
+              <motion.div
+                className="card text-center p-6"
+                style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+                whileHover={{ y: -5, scale: 1.02 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <BookOpen className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--theme-text)' }}>Library</h3>
+                <p className="text-xs" style={{ color: 'var(--theme-text-secondary)' }}>Find and assign content</p>
+              </motion.div>
+            </>
+          )}
+
+          {isAdmin && (
+            <>
+              <motion.div
+                className="card text-center p-6"
+                style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+                whileHover={{ y: -5, scale: 1.02 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Shield className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--theme-text)' }}>System</h3>
+                <p className="text-xs" style={{ color: 'var(--theme-text-secondary)' }}>Platform health & access</p>
+              </motion.div>
+
+              <motion.div
+                className="card text-center p-6"
+                style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+                whileHover={{ y: -5, scale: 1.02 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="w-12 h-12 bg-teal-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Users className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--theme-text)' }}>Users</h3>
+                <p className="text-xs" style={{ color: 'var(--theme-text-secondary)' }}>Manage accounts & roles</p>
+              </motion.div>
+
+              <motion.div
+                className="card text-center p-6"
+                style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+                whileHover={{ y: -5, scale: 1.02 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <BarChart3 className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--theme-text)' }}>Analytics</h3>
+                <p className="text-xs" style={{ color: 'var(--theme-text-secondary)' }}>Usage & performance</p>
+              </motion.div>
+
+              <motion.div
+                className="card text-center p-6"
+                style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+                whileHover={{ y: -5, scale: 1.02 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <FolderKanban className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="font-semibold mb-2" style={{ color: 'var(--theme-text)' }}>Content</h3>
+                <p className="text-xs" style={{ color: 'var(--theme-text-secondary)' }}>Projects & updates</p>
+              </motion.div>
+            </>
+          )}
+        </motion.section>
+
+        <motion.section
+          className="grid gap-6 lg:grid-cols-3"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+        >
+          <motion.div
+            className="card hover-lift p-6"
+            style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+            whileHover={{ y: -5, scale: 1.02 }}
+            transition={{ duration: 0.2 }}
+          >
+            <h2 className="text-lg font-semibold mb-3" style={{ color: 'var(--theme-text)' }}>Quick Actions</h2>
+            <p className="text-sm mb-4" style={{ color: 'var(--theme-text-secondary)' }}>
+              Access your favorite resources and continue learning.
+            </p>
+            <motion.button
+              onClick={onBrowseLibrary}
+              className="w-full bg-purple-500 text-white py-2 px-4 rounded-lg font-medium hover:bg-purple-600 transition-colors"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              Browse Library
+            </motion.button>
+          </motion.div>
+
+          <motion.div
+            className="card hover-lift p-6"
+            style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+            whileHover={{ y: -5, scale: 1.02 }}
+            transition={{ duration: 0.2 }}
+          >
+            <h2 className="text-lg font-semibold mb-3" style={{ color: 'var(--theme-text)' }}>Recent Activity</h2>
+            <p className="text-sm mb-4" style={{ color: 'var(--theme-text-secondary)' }}>
+              {lastActivityText}
+            </p>
+            <motion.button
+              onClick={onViewProgress}
+              className="w-full bg-teal-500 text-white py-2 px-4 rounded-lg font-medium hover:bg-teal-600 transition-colors"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              View Progress
+            </motion.button>
+          </motion.div>
+
+          <motion.div
+            className="card hover-lift p-6"
+            style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+            whileHover={{ y: -5, scale: 1.02 }}
+            transition={{ duration: 0.2 }}
+          >
+            <h2 className="text-lg font-semibold mb-3" style={{ color: 'var(--theme-text)' }}>Study Streak</h2>
+            <p className="text-sm mb-4" style={{ color: 'var(--theme-text-secondary)' }}>
+              {streakText}
+            </p>
+            <motion.button
+              onClick={onStartSession}
+              className="w-full bg-yellow-500 text-white py-2 px-4 rounded-lg font-medium hover:bg-yellow-600 transition-colors"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              Start Session
+            </motion.button>
+          </motion.div>
+        </motion.section>
+
+        <motion.section
+          className="card p-6"
+          style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7 }}
+          whileHover={{ y: -2 }}
+        >
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold" style={{ color: 'var(--theme-text)' }}>Learning Path</h2>
+              <p className="text-sm" style={{ color: 'var(--theme-text-secondary)' }}>
+                Continue your personalized learning journey with curated content and challenges.
+              </p>
+            </div>
+            <motion.span
+              className="inline-flex items-center rounded-full bg-gradient-to-r from-purple-500 to-teal-500 px-4 py-2 text-sm font-semibold text-white"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              Explore Now
+            </motion.span>
+          </div>
+        </motion.section>
+      </div>
+    </motion.div>
+  );
+});
 
 DashboardOverview.displayName = "DashboardOverview";
 
+const Quiz = lazy(() => import("./Quiz"));
+
 export default function Dashboard({ onLogout }: DashboardProps) {
-  const [activeTab, setActiveTab] = useState<"overview" | "library" | "profile">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "library" | "profile" | "quiz">("overview");
   const [bookToNavigate, setBookToNavigate] = useState<{ path: string; name: string } | null>(null);
+  const [currentQuiz, setCurrentQuiz] = useState<{ quizId: Id<"quizzes"> } | null>(null);
   const userProfile = useQuery(api.userProfiles.getMyProfile);
+  const userProgress = useQuery(api.progress.getUserProgress);
 
   const handleBookOpen = (book: { path: string; name: string }) => {
+    toast(`Opening: ${book.name}`);
     setBookToNavigate(book);
     setActiveTab("library");
+  };
+
+  const handleStartQuiz = (quizId: Id<"quizzes">) => {
+    setCurrentQuiz({ quizId });
+    setActiveTab("quiz");
   };
 
   const userContext = useMemo(() => ({
@@ -146,7 +592,30 @@ export default function Dashboard({ onLogout }: DashboardProps) {
       </div>
 
       {/* Content Area */}
-      {activeTab === "library" ? (
+      {activeTab === "quiz" && currentQuiz ? (
+        <ErrorBoundary fallback={
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <p className="text-red-600 font-semibold">Failed to load quiz</p>
+              <button onClick={() => setActiveTab("library")} className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg">Back to Library</button>
+            </div>
+          </div>
+        }>
+          <Suspense fallback={<SectionLoader label="quiz" />}>
+            <Quiz
+              quizId={currentQuiz.quizId}
+              onComplete={() => {
+                setCurrentQuiz(null);
+                setActiveTab("library");
+              }}
+              onClose={() => {
+                setCurrentQuiz(null);
+                setActiveTab("library");
+              }}
+            />
+          </Suspense>
+        </ErrorBoundary>
+      ) : activeTab === "library" ? (
         <ErrorBoundary fallback={
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center">
@@ -155,7 +624,9 @@ export default function Dashboard({ onLogout }: DashboardProps) {
             </div>
           </div>
         }>
-          <Library bookToOpen={bookToNavigate} />
+          <Suspense fallback={<SectionLoader label="library" />}>
+            <Library bookToOpen={bookToNavigate} onStartQuiz={handleStartQuiz} />
+          </Suspense>
         </ErrorBoundary>
       ) : activeTab === "profile" ? (
         <ErrorBoundary fallback={
@@ -166,10 +637,20 @@ export default function Dashboard({ onLogout }: DashboardProps) {
             </div>
           </div>
         }>
-          <ProfileEdit onCancel={() => setActiveTab("overview")} />
+          <Suspense fallback={<SectionLoader label="profile" />}>
+            <ProfileEdit onCancel={() => setActiveTab("overview")} />
+          </Suspense>
         </ErrorBoundary>
       ) : (
-        <DashboardOverview />
+        <DashboardOverview
+          userName={userProfile?.name}
+          userRole={userProfile?.role}
+          grade={userProfile?.grade}
+          userProgress={userProgress}
+          onBrowseLibrary={() => setActiveTab("library")}
+          onViewProgress={() => setActiveTab("profile")}
+          onStartSession={() => setActiveTab("library")}
+        />
       )}
 
       {/* AI Assistant */}

@@ -91,8 +91,10 @@ export default function Updates() {
           {displayUpdates.map((update, index) => (
             <div
               key={update._id}
-              className="group bg-gradient-to-br from-purple-800/20 to-teal-800/20 backdrop-blur-sm border border-purple-500/30 rounded-2xl p-6 hover:border-teal-400/50 transition-all duration-300"
+              className="group card rounded-2xl transition-all duration-300"
+              style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
             >
+              <div className="h-1 w-16 rounded-full bg-gradient-to-r from-teal-400 to-purple-500 mb-6" />
               <div className="flex items-start gap-4">
                 <div className={`flex-shrink-0 w-12 h-12 bg-gradient-to-r ${getTypeColor(update.type)} rounded-full flex items-center justify-center text-white`}>
                   {getUpdateIcon(update.type)}
@@ -111,7 +113,7 @@ export default function Updates() {
                         href={update.githubReleaseData.releaseUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-teal-400 hover:text-teal-300 text-sm font-semibold transition-colors"
+                        className="text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 text-sm font-semibold transition-colors"
                       >
                         View Release →
                       </a>

@@ -21,4 +21,4 @@ Permissions-Policy: camera=(), microphone=(), geolocation=()
 
 # Content-Security-Policy: Restrict resource loading
 # Note: Adjust this based on your actual resource domains
-Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http:; font-src 'self' data:; connect-src 'self' https://*.convex.cloud https://eduscrape-host.web.app wss://*.convex.cloud; frame-src 'self';
+Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://eduscrape-host.web.app; base-uri 'self'; form-action 'self'; frame-ancestors 'none';

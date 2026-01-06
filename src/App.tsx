@@ -5,13 +5,25 @@ import About from "./components/About";
 import Projects from "./components/Projects";
 import Team from "./components/Team";
 import Updates from "./components/Updates";
-import Login from "./components/Login.tsx";
-import Dashboard from "./components/Dashboard.tsx";
 import Footer from "./components/Footer";
-import Admin from "./components/Admin";
 import AIAssistant from "./components/AIAssistant";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
+
+const Admin = lazy(() => import("./components/Admin"));
+const Login = lazy(() => import("./components/Login.tsx"));
+const Dashboard = lazy(() => import("./components/Dashboard.tsx"));
+
+function FullPageLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--theme-bg)' }}>
+      <div className="flex flex-col items-center gap-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600" />
+        <p style={{ color: 'var(--theme-text-secondary)' }}>Loading…</p>
+      </div>
+    </div>
+  );
+}
 
 type View = "home" | "admin" | "login" | "dashboard";
 
@@ -60,52 +72,51 @@ export default function App() {
     };
   }, []);
 
-  if (currentView === "admin") {
-    return <Admin />;
-  }
-
-  if (currentView === "login") {
-    return (
-      <Login
-        onCancel={() => {
-          window.location.hash = "";
-          setCurrentView("home");
-        }}
-        onSuccess={() => {
-          window.location.hash = "#dashboard";
-          setCurrentView("dashboard");
-        }}
-      />
-    );
-  }
-
-  if (currentView === "dashboard") {
-    return (
-      <Dashboard
-        onLogout={() => {
-          window.location.hash = "";
-          setCurrentView("home");
-        }}
-      />
-    );
-  }
-
   return (
     <ErrorBoundary>
       <div className="min-h-screen" style={{ background: 'var(--theme-bg)' }}>
-        <Header />
+        {currentView === "admin" ? (
+          <Suspense fallback={<FullPageLoader />}>
+            <Admin />
+          </Suspense>
+        ) : currentView === "login" ? (
+          <Suspense fallback={<FullPageLoader />}>
+            <Login
+              onCancel={() => {
+                window.location.hash = "";
+                setCurrentView("home");
+              }}
+              onSuccess={() => {
+                window.location.hash = "#dashboard";
+                setCurrentView("dashboard");
+              }}
+            />
+          </Suspense>
+        ) : currentView === "dashboard" ? (
+          <Suspense fallback={<FullPageLoader />}>
+            <Dashboard
+              onLogout={() => {
+                window.location.hash = "";
+                setCurrentView("home");
+              }}
+            />
+          </Suspense>
+        ) : (
+          <>
+            <Header />
+            <main className="relative">
+              <Hero />
+              <About />
+              <Projects />
+              <Team />
+              <Updates />
+            </main>
+            <Footer />
+            <AIAssistant />
+          </>
+        )}
 
-        <main className="relative">
-          <Hero />
-          <About />
-          <Projects />
-          <Team />
-          <Updates />
-        </main>
-
-        <Footer />
-        <AIAssistant />
-        <Toaster theme="light" />
+        <Toaster theme="system" richColors />
       </div>
     </ErrorBoundary>
   );

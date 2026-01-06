@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 
 export default function Hero() {
   const [isVisible, setIsVisible] = useState(false);
@@ -17,7 +18,12 @@ export default function Hero() {
       <div className="container mx-auto px-6 text-center relative z-10">
         <div className="max-w-4xl mx-auto">
           {/* Product Logo with animation */}
-          <div className={`mb-8 flex justify-center ${isVisible ? 'scale-in' : 'opacity-0'}`}>
+          <motion.div
+            className="mb-8 flex justify-center"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
             <div className="w-32 h-32 rounded-2xl flex items-center justify-center shadow-2xl overflow-hidden border-2" style={{ background: 'var(--theme-card-bg)', borderColor: 'var(--theme-border)' }}>
               {logoError ? (
                 <div className="w-full h-full flex items-center justify-center bg-purple-600 text-white font-bold text-2xl">
@@ -36,32 +42,55 @@ export default function Hero() {
                 />
               )}
             </div>
-          </div>
+          </motion.div>
 
-          <h1 className={`text-5xl md:text-7xl font-bold mb-6 leading-tight ${isVisible ? 'slide-up' : 'opacity-0'}`} style={{ color: 'var(--theme-text)' }}>
+          <motion.h1
+            className="text-5xl md:text-7xl font-bold mb-6 leading-tight"
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
+            style={{ color: 'var(--theme-text)' }}
+          >
             EduScrapeApp
             <span className="text-purple-600"> Reinvents Learning</span>
-          </h1>
+          </motion.h1>
 
-          <p className={`text-xl md:text-2xl mb-12 max-w-3xl mx-auto leading-relaxed ${isVisible ? 'slide-up stagger-1' : 'opacity-0'}`} style={{ color: 'var(--theme-text-secondary)' }}>
+          <motion.p
+            className="text-xl md:text-2xl mb-12 max-w-3xl mx-auto leading-relaxed"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.6 }}
+            style={{ color: 'var(--theme-text-secondary)' }}
+          >
             Discover a unified platform that collects, organises, and delivers curriculum-ready content in seconds.
             EduScrapeApp blends smart automation with educator-friendly design so schools can keep lesson plans current without the busywork.
-          </p>
+          </motion.p>
 
-          <div className={`flex flex-col sm:flex-row gap-6 justify-center items-center ${isVisible ? 'slide-up stagger-2' : 'opacity-0'}`}>
-            <button
+          <motion.div
+            className="flex flex-col sm:flex-row gap-6 justify-center items-center"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.8 }}
+          >
+            <motion.button
               onClick={() => document.getElementById('projects')?.scrollIntoView({ behavior: 'smooth' })}
               className="btn-primary px-8 py-4 text-lg"
+              whileHover={{ scale: 1.05, y: -2 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ duration: 0.2 }}
             >
               Explore Features
-            </button>
-            <button
+            </motion.button>
+            <motion.button
               onClick={() => document.getElementById('team')?.scrollIntoView({ behavior: 'smooth' })}
               className="btn-outline px-8 py-4 text-lg"
+              whileHover={{ scale: 1.05, y: -2 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ duration: 0.2 }}
             >
               See Outcomes
-            </button>
-          </div>
+            </motion.button>
+          </motion.div>
         </div>
 
         {/* Scroll Indicator */}

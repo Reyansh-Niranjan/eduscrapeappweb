@@ -1,6 +1,7 @@
 import { query, action, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { api, internal } from "./_generated/api";
+import { getAuthUserId } from "@convex-dev/auth/server";
 
 // Type definitions for Firebase structure
 interface BookInfo {
@@ -18,6 +19,125 @@ interface SearchResult {
   title: string;
   path: string;
 }
+
+const debugLog = (..._args: any[]) => {
+  // Intentionally no-op: avoid server-side console logging in production.
+};
+
+const TOOL_MODEL = process.env.OPENROUTER_TOOL_MODEL || "mistralai/devstral-2512:free";
+const WRITER_MODEL = process.env.OPENROUTER_WRITER_MODEL || "mistralai/devstral-2512:free";
+
+// Lightweight in-memory cache for the library structure.json.
+// This is best-effort (Convex isolates may be recycled), but it reduces repeated fetches under load.
+const STRUCTURE_URL = "https://eduscrape-host.web.app/structure.json";
+const STRUCTURE_TTL_MS = 5 * 60 * 1000;
+let cachedStructure:
+  | {
+    fetchedAt: number;
+    data: FirebaseStructure;
+  }
+  | null = null;
+
+async function getCachedStructure(): Promise<FirebaseStructure> {
+  const now = Date.now();
+  if (cachedStructure && now - cachedStructure.fetchedAt < STRUCTURE_TTL_MS) {
+    return cachedStructure.data;
+  }
+  const response = await fetch(STRUCTURE_URL);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch structure: ${response.status}`);
+  }
+  const structure = (await response.json()) as FirebaseStructure;
+  cachedStructure = { fetchedAt: now, data: structure };
+  return structure;
+}
+
+function safeParseJson(input: string): any {
+  try {
+    // Remove markdown code blocks if present
+    const cleaned = input.replace(/```json\n?|\n?```/g, "").trim();
+    return JSON.parse(cleaned);
+  } catch {
+    return null;
+  }
+}
+
+function truncate(text: string, maxLen: number): string {
+  if (text.length <= maxLen) return text;
+  return `${text.slice(0, maxLen)}\n\n[truncated]`;
+}
+
+type ToolCall = {
+  id: string;
+  function: {
+    name: string;
+    arguments: string;
+  };
+};
+
+type OpenRouterResponse = {
+  choices: Array<{
+    message: {
+      content: string | null;
+      tool_calls?: ToolCall[];
+    };
+  }>;
+};
+
+type OpenRouterMessage =
+  | { role: "system"; content: string }
+  | { role: "user"; content: string }
+  | { role: "assistant"; content: string | null; tool_calls?: ToolCall[] }
+  | { role: "tool"; tool_call_id: string; content: string };
+
+async function openRouterChat(args: {
+  apiKey: string;
+  model: string;
+  messages: OpenRouterMessage[];
+  tools?: any;
+  toolChoice?: "auto" | "none";
+  maxTokens?: number;
+  temperature?: number;
+}): Promise<OpenRouterResponse> {
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${args.apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://eduscrapeapp.com",
+      "X-Title": "EduScrapeApp",
+    },
+    body: JSON.stringify({
+      model: args.model,
+      messages: args.messages,
+      tools: args.tools,
+      tool_choice: args.toolChoice,
+      max_tokens: args.maxTokens ?? 900,
+      temperature: args.temperature ?? 0.7,
+    }),
+  });
+
+  const textBody = await response.text();
+  debugLog("openrouter", {
+    model: args.model,
+    status: response.status,
+    bodyLength: textBody.length,
+  });
+
+  if (!response.ok) {
+    // Avoid logging full response bodies (may include sensitive content).
+    console.error("[ERROR] OpenRouter API error:", response.status, response.statusText);
+    throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
+  }
+
+  const data = safeParseJson(textBody);
+  if (!data) {
+    throw new Error("Invalid response from OpenRouter");
+  }
+  return data;
+}
+
+
 
 // Define tool types
 const toolDefinitions = [
@@ -84,86 +204,40 @@ const toolDefinitions = [
 
 // Web search using DuckDuckGo (no API key needed)
 async function webSearch(query: string): Promise<string> {
-  console.log('[DEBUG] Web Search called with query:', query);
+  debugLog("web_search", { query });
   try {
     const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-    console.log('[DEBUG] Fetching from:', url);
     const response = await fetch(url);
-    console.log('[DEBUG] Web search response status:', response.status);
     const html = await response.text();
-    console.log('[DEBUG] HTML length:', html.length);
-    
+
     // Parse simple results from DuckDuckGo HTML
     const results: string[] = [];
     const resultRegex = /<a class="result__a"[^>]*>([^<]+)<\/a>[\s\S]*?<a class="result__snippet"[^>]*>([^<]+)<\/a>/g;
     let match;
     let count = 0;
-    
+
     while ((match = resultRegex.exec(html)) !== null && count < 5) {
       results.push(`${match[1]}: ${match[2]}`);
       count++;
     }
-    
+
     if (results.length === 0) {
       return `No web results found for "${query}". This might be a topic better suited for the educational library.`;
     }
-    
+
     return `Web search results for "${query}":\n\n${results.join('\n\n')}`;
   } catch (error) {
     return `Unable to perform web search at this time. Error: ${error instanceof Error ? error.message : 'Unknown error'}`;
   }
 }
 
-// Book search through Firebase structure
-async function bookSearch(query: string, userGrade?: string): Promise<string> {
+// Book search delegated to Node runtime action
+async function bookSearch(ctx: any, query: string): Promise<string> {
   try {
-    const response = await fetch('https://eduscrape-host.web.app/structure.json');
-    if (!response.ok) {
-      throw new Error(`Failed to fetch structure: ${response.status}`);
-    }
-    const structure = await response.json() as FirebaseStructure;
-    
-    const queryLower = query.toLowerCase();
-    const results: string[] = [];
-    
-    // Search through structure with proper typing
-    function searchStructure(obj: FirebaseStructure | BookInfo[], path: string[] = []): void {
-      if (Array.isArray(obj)) {
-        // This is a list of books
-        for (const book of obj) {
-          if (typeof book === 'object' && 'name' in book) {
-            const bookName = book.name?.toLowerCase() ?? '';
-            if (bookName.includes(queryLower) || 
-                path.join('/').toLowerCase().includes(queryLower)) {
-              results.push(`📚 ${book.name} - Path: ${path.join('/')}/${book.name}`);
-            }
-          }
-        }
-      } else if (typeof obj === 'object' && obj !== null) {
-        // This is a folder structure
-        for (const [key, value] of Object.entries(obj)) {
-          const currentPath = [...path, key];
-          searchStructure(value, currentPath);
-        }
-      }
-    }
-    
-    // If user grade specified, prioritize that grade
-    if (userGrade && structure[userGrade]) {
-      searchStructure(structure[userGrade], [userGrade]);
-    }
-    
-    // Also search other grades
-    searchStructure(structure, []);
-    
-    if (results.length === 0) {
-      return `No books found matching "${query}". Try searching for subjects like "Mathematics", "Science", "English", or chapter names.`;
-    }
-    
-    const uniqueResults = [...new Set(results)].slice(0, 10);
-    return `Found ${uniqueResults.length} book(s) matching "${query}":\n\n${uniqueResults.join('\n')}`;
+    const result = await ctx.runAction(api.deepsearch.searchBooks, { query });
+    return result;
   } catch (error) {
-    return `Unable to search books at this time. Error: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    return `Unable to search books. Error: ${error instanceof Error ? error.message : 'Unknown error'}`;
   }
 }
 
@@ -180,13 +254,13 @@ export const getPortfolioContext = query({
   returns: v.string(),
   handler: async (ctx, args) => {
     try {
-      const identity = await ctx.auth.getUserIdentity();
+      const userId = await getAuthUserId(ctx);
       let userProfile = null;
-      
-      if (identity) {
+
+      if (userId) {
         userProfile = await ctx.db
           .query("userProfiles")
-          .withIndex("by_user", (q) => q.eq("userId", identity.subject as any))
+          .withIndex("by_user", (q) => q.eq("userId", userId))
           .first();
       }
 
@@ -198,12 +272,12 @@ export const getPortfolioContext = query({
       ]);
 
       let context = "You are EduScrapeApp AI Assistant, an intelligent helper for students and educators.\n\n";
-      
+
       context += "YOUR CAPABILITIES:\n";
       context += "1. 🌐 Web Search - Search the internet for current information and general knowledge\n";
       context += "2. 📚 Book Search - Find educational books, chapters, and materials in our library\n";
       context += "3. 📖 Open Chapter - Directly open any book or chapter for the user to read\n\n";
-      
+
       // Add user context
       if (userProfile || args.userContext) {
         context += "USER CONTEXT:\n";
@@ -222,7 +296,7 @@ export const getPortfolioContext = query({
         }
         context += "\n";
       }
-      
+
       context += "INSTRUCTIONS:\n";
       context += "- When users ask about topics, use web_search for general knowledge or current events\n";
       context += "- Use book_search to find educational materials in our library\n";
@@ -317,22 +391,38 @@ export const sendChatMessage = action({
       path: v.string(),
       name: v.string(),
     })),
+    resultObject: v.optional(
+      v.object({
+        needsTools: v.boolean(),
+        toolModel: v.string(),
+        writerModel: v.string(),
+        tools: v.array(
+          v.object({
+            name: v.string(),
+            args: v.optional(v.string()),
+            result: v.string(),
+          })
+        ),
+      })
+    ),
   }),
   handler: async (ctx, args) => {
-    console.log('[DEBUG] sendChatMessage called');
-    console.log('[DEBUG] Session:', args.sessionId);
-    console.log('[DEBUG] Message:', args.message);
-    console.log('[DEBUG] User context:', JSON.stringify(args.userContext));
+    debugLog("sendChatMessage", {
+      sessionId: args.sessionId,
+      messageLength: args.message.length,
+      userContext: args.userContext,
+    });
     try {
       // Store user message
-      console.log('[DEBUG] Storing user message...');
+      console.log(`[DEBUG] sendChatMessage: Processing message from session ${args.sessionId}`);
+      console.log(`[DEBUG] User Message: "${args.message}"`);
+
       await ctx.runMutation(internal.chatbot.storeMessage, {
         sessionId: args.sessionId,
         role: "user",
         content: args.message,
         timestamp: Date.now(),
       });
-      console.log('[DEBUG] User message stored');
 
       // Get context with user info
       const context: string = await ctx.runQuery(api.chatbot.getPortfolioContext, {
@@ -344,172 +434,131 @@ export const sendChatMessage = action({
         throw new Error("OpenRouter API key is not configured. Add OPENROUTER_API_KEY in the Convex dashboard.");
       }
 
-      const model = "nvidia/nemotron-nano-12b-v2-vl:free";
-
       // Get recent chat history
       const history = await ctx.runQuery(api.chatbot.getChatHistory, { sessionId: args.sessionId });
-      const recentMessages = history.slice(-6).map(msg => ({
+      const recentMessages = history.slice(-8).map((msg: any) => ({
         role: msg.role,
         content: msg.content,
       }));
 
-      // First API call with tools
-      console.log('[DEBUG] Calling OpenRouter API...');
-      console.log('[DEBUG] Model:', model);
-      console.log('[DEBUG] Recent messages count:', recentMessages.length);
-      console.log('[DEBUG] Tools available:', toolDefinitions.length);
-      const response: Response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://eduscrapeapp.com",
-          "X-Title": "EduScrapeApp",
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            {
-              role: "system",
-              content: context,
-            },
-            ...recentMessages.slice(0, -1),
-            {
-              role: "user",
-              content: args.message,
-            },
-          ],
-          tools: toolDefinitions,
-          tool_choice: "auto",
-          max_tokens: 1000,
-          temperature: 0.7,
-        }),
+      // --- STANDARD TOOL CALLING LOOP ---
+
+      // 1. Prepare messages with System Context + History + Current User Message
+      const messages: OpenRouterMessage[] = [
+        { role: "system", content: context },
+        ...recentMessages.slice(0, -1).map((m: any) => ({ role: m.role, content: m.content } as OpenRouterMessage)),
+        { role: "user", content: args.message },
+      ];
+
+      // 2. First call to the model - let it decide to use tools
+      console.log(`[DEBUG] Call 1 (Devstral): Sending ${messages.length} messages to ${TOOL_MODEL}`);
+
+      const firstResponse = await openRouterChat({
+        apiKey,
+        model: TOOL_MODEL,
+        messages,
+        tools: toolDefinitions,
+        toolChoice: "auto",
+        maxTokens: 900,
+        temperature: 0.3, // Lower temp for reliable tool calling
       });
 
-      const textBody = await response.text();
-      console.log('[DEBUG] API response status:', response.status);
-      console.log('[DEBUG] API response body length:', textBody.length);
+      const firstMessage = firstResponse.choices?.[0]?.message;
+      console.log(`[DEBUG] Call 1 Response:`, JSON.stringify(firstMessage, null, 2));
 
-      if (!response.ok) {
-        console.error('[ERROR] OpenRouter API error:', response.status, textBody);
-        throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
-      }
-
-      let data: any;
-      try {
-        data = JSON.parse(textBody);
-      } catch (parseError) {
-        throw new Error("Invalid response from OpenRouter");
-      }
-
-      const message = data.choices[0]?.message;
-      const toolCalls = message?.tool_calls;
-      console.log('[DEBUG] AI message content:', message?.content);
-      console.log('[DEBUG] Tool calls received:', toolCalls ? toolCalls.length : 0);
-      
-      let finalResponse = message?.content || "";
-      const executedTools: Array<{ name: string; result: string }> = [];
+      let finalResponse = "";
+      const executedTools: Array<{ name: string; result: string; args?: string }> = [];
       let bookToOpen: { path: string; name: string } | undefined;
 
-      // Execute tool calls if any
+      const toolCalls = firstMessage?.tool_calls;
+
       if (toolCalls && toolCalls.length > 0) {
-        console.log('[DEBUG] Processing tool calls...');
+        // --- TOOLS REQUESTED ---
+
+        // Append the assistant's "call intent" message to history
+        // IMPORTANT: We must include the original tool_calls in this message
+        messages.push({
+          role: "assistant",
+          content: firstMessage.content,
+          tool_calls: toolCalls
+        });
+
+        // Loop through and execute tools
+        console.log(`[DEBUG] Tool Loop: Processing ${toolCalls.length} tool calls`);
+
         for (const toolCall of toolCalls) {
           const functionName = toolCall.function.name;
-          console.log('[DEBUG] Executing tool:', functionName);
-          const functionArgs = JSON.parse(toolCall.function.arguments);
-          console.log('[DEBUG] Tool arguments:', JSON.stringify(functionArgs));
-          
+          const rawArgs = toolCall.function.arguments;
+          console.log(`[DEBUG] Tool Exec: ${functionName} with args:`, rawArgs);
+
+          const functionArgs = rawArgs ? safeParseJson(rawArgs) : null;
+
           let toolResult = "";
-          
-          if (functionName === "web_search") {
-            console.log('[DEBUG] Executing web_search tool');
-            toolResult = await webSearch(functionArgs.query);
-            console.log('[DEBUG] Web search result length:', toolResult.length);
-            executedTools.push({ name: "web_search", result: toolResult });
-          } else if (functionName === "book_search") {
-            console.log('[DEBUG] Executing book_search tool');
-            toolResult = await bookSearch(functionArgs.query, functionArgs.grade || args.userContext?.grade);
-            console.log('[DEBUG] Book search result length:', toolResult.length);
-            executedTools.push({ name: "book_search", result: toolResult });
-          } else if (functionName === "open_chapter") {
-            console.log('[DEBUG] Executing open_chapter tool');
-            bookToOpen = {
-              path: functionArgs.path,
-              name: functionArgs.bookName,
-            };
-            toolResult = `Opening "${functionArgs.bookName}" for you now...`;
-            executedTools.push({ name: "open_chapter", result: toolResult });
-          }
-          
-          // Second API call with tool results
-          console.log('[DEBUG] Making follow-up API call with tool results...');
-          const followUpResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-              "HTTP-Referer": "https://eduscrapeapp.com",
-              "X-Title": "EduScrapeApp",
-            },
-            body: JSON.stringify({
-              model,
-              messages: [
-                {
-                  role: "system",
-                  content: context,
-                },
-                {
-                  role: "user",
-                  content: args.message,
-                },
-                {
-                  role: "assistant",
-                  content: null,
-                  tool_calls: [toolCall],
-                },
-                {
-                  role: "tool",
-                  tool_call_id: toolCall.id,
-                  content: toolResult,
-                },
-              ],
-              max_tokens: 800,
-              temperature: 0.7,
-            }),
-          });
-          
-          const followUpText = await followUpResponse.text();
-          console.log('[DEBUG] Follow-up response status:', followUpResponse.status);
-          console.log('[DEBUG] Follow-up response body length:', followUpText.length);
-          
-          if (!followUpResponse.ok) {
-            console.error('[ERROR] Follow-up API error:', followUpResponse.status, followUpText);
-            finalResponse = toolResult; // Use tool result if follow-up fails
+
+          if (!functionName || !functionArgs) {
+            console.log(`[DEBUG] Tool Error: Invalid args for ${functionName}`);
+            toolResult = "Error: Invalid tool args";
+            // Still need to append result or loop breaks
           } else {
-            try {
-              const followUpData = JSON.parse(followUpText);
-              console.log('[DEBUG] Follow-up data:', JSON.stringify(followUpData));
-              finalResponse = followUpData.choices?.[0]?.message?.content || toolResult;
-            } catch (parseError) {
-              console.error('[ERROR] Failed to parse follow-up response:', parseError);
-              finalResponse = toolResult; // Use tool result if parsing fails
+            if (functionName === "web_search") {
+              toolResult = await webSearch(String(functionArgs.query ?? ""));
+            } else if (functionName === "book_search") {
+              toolResult = await bookSearch(
+                ctx, // Pass context for action call
+                String(functionArgs.query ?? "")
+              );
+            } else if (functionName === "open_chapter") {
+              const path = String(functionArgs.path ?? "");
+              const bookName = String(functionArgs.bookName ?? "");
+              if (path && bookName) {
+                bookToOpen = { path, name: bookName };
+                toolResult = `Opening "${bookName}" for you now...`;
+              } else {
+                toolResult = "Missing path or bookName.";
+              }
+            } else {
+              toolResult = `Unknown tool: ${functionName}`;
             }
           }
+
+          console.log(`[DEBUG] Tool Result (${functionName}):`, toolResult.slice(0, 100) + "...");
+
+          executedTools.push({ name: functionName, args: rawArgs, result: toolResult });
+
+          // Append the TOOL RESULT message
+          messages.push({
+            role: "tool",
+            tool_call_id: toolCall.id,
+            content: truncate(toolResult, 4000) // Safety truncate
+          });
         }
+
+        // 3. Second call to the model - Final Answer based on Tool Results
+        console.log(`[DEBUG] Call 2 (Writer): Sending updated history with tool results...`);
+
+        const secondResponse = await openRouterChat({
+          apiKey,
+          model: WRITER_MODEL,
+          messages,
+          tools: toolDefinitions, // Keep tools available (required by strict APIs)
+          toolChoice: "auto", // Or 'none' if we want to force stop, but 'auto' is standard
+          maxTokens: 900,
+          temperature: 0.7,
+        });
+
+        finalResponse = secondResponse.choices?.[0]?.message?.content || "";
+        console.log(`[DEBUG] Call 2 Response:`, finalResponse.slice(0, 100) + "...");
+
+      } else {
+        // --- NO TOOLS REQUESTED ---
+        finalResponse = firstMessage?.content || "";
       }
 
       if (!finalResponse) {
-        console.log('[DEBUG] No final response, using default message');
-        finalResponse = "I apologize, but I couldn't generate a response at this time.";
+        finalResponse = "I apologize, but I couldn't generate a response.";
       }
 
-      console.log('[DEBUG] Final response length:', finalResponse.length);
-      console.log('[DEBUG] Executed tools count:', executedTools.length);
-      console.log('[DEBUG] Book to open:', bookToOpen ? bookToOpen.name : 'none');
-
       // Store AI response
-      console.log('[DEBUG] Storing AI response...');
       await ctx.runMutation(internal.chatbot.storeMessage, {
         sessionId: args.sessionId,
         role: "assistant",
@@ -517,16 +566,24 @@ export const sendChatMessage = action({
         timestamp: Date.now(),
       });
 
-      console.log('[DEBUG] Sending successful response');
       return {
         success: true,
         response: finalResponse,
-        toolCalls: executedTools.length > 0 ? executedTools : undefined,
+        toolCalls: executedTools.length > 0 ? executedTools.map((t) => ({ name: t.name, result: t.result })) : undefined,
         bookToOpen,
+        resultObject: {
+          needsTools: executedTools.length > 0,
+          toolModel: TOOL_MODEL,
+          writerModel: WRITER_MODEL,
+          tools: executedTools.map((t) => ({
+            name: t.name,
+            args: typeof t.args === "string" ? truncate(t.args, 1200) : undefined,
+            result: truncate(t.result, 4000),
+          })),
+        }
       };
     } catch (error) {
-      console.error('[ERROR] Chat error:', error);
-      console.error('[ERROR] Error stack:', error instanceof Error ? error.stack : 'No stack');
+      console.error('[ERROR] Chat error:', error instanceof Error ? error.message : error);
       return {
         success: false,
         error: error instanceof Error ? error.message : "An unexpected error occurred",
@@ -562,11 +619,14 @@ export const getChatHistory = query({
     timestamp: v.number(),
   })),
   handler: async (ctx, args) => {
+    // Bound history for performance; callers can request more later if needed.
     const messages = await ctx.db
       .query("chatMessages")
       .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
-      .order("asc")
-      .collect();
+      .order("desc")
+      .take(40);
+
+    messages.reverse();
 
     return messages.map((msg: any) => ({
       _id: msg._id,
