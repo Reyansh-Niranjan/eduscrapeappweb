@@ -264,23 +264,97 @@ export const submitQuizAnswer = mutation({
       throw new Error("Answer already submitted");
     }
 
-    // Record answer (grading will be done at completion)
+    const normalize = (s: string) => String(s ?? "").trim().toLowerCase();
+
+    // Default grading outcomes.
+    let isCorrect = false;
+    let pointsEarned = 0;
+    let feedback: string | undefined = undefined;
+
+    // Skip grading for explicitly skipped questions.
+    if (typeof args.answer === "string" && args.answer === SKIPPED_ANSWER) {
+      isCorrect = false;
+      pointsEarned = XP_PER_SKIPPED;
+      feedback = "Skipped";
+    } else if (question.type === "multiple_choice" || question.type === "true_false") {
+      isCorrect = normalize(question.correctAnswer) === normalize(args.answer);
+      pointsEarned = isCorrect ? XP_PER_CORRECT : XP_PER_WRONG;
+      feedback = question.explanation;
+    } else {
+      // short_answer: use LLM grading for reasonable variations.
+      const apiKey = process.env.OPENROUTER_API_KEY;
+      if (!apiKey) {
+        // Fallback without LLM.
+        isCorrect = normalize(question.correctAnswer) === normalize(args.answer);
+        pointsEarned = isCorrect ? XP_PER_CORRECT : XP_PER_WRONG;
+        feedback = question.explanation;
+      } else {
+        try {
+          // Context for the grader.
+          const chapter = await ctx.db.get(quiz.chapterId);
+          const book = chapter
+            ? await ctx.db
+                .query("books")
+                .withIndex("by_path", (q) => q.eq("path", chapter.bookPath))
+                .unique()
+            : null;
+
+          const chapterContext = `${book?.subject || "Unknown"} - ${chapter?.grade || ""} - ${chapter?.identifiedTitle || "Chapter"}`;
+
+          const prompt = `You are a strict quiz grader. Evaluate the student's answer for correctness.
+
+Question: ${question.question}
+Correct Answer: ${question.correctAnswer}
+Student's Answer: ${args.answer}
+Chapter Context: ${chapterContext}
+
+Instructions:
+- Determine if the student's answer is correct or incorrect.
+- Be strict but allow reasonable variations in wording.
+- Respond with ONLY JSON: {"correct": boolean, "reason": "brief explanation"}`;
+
+          const response = await openRouterChat({
+            apiKey,
+            model: QUIZ_GRADING_MODEL,
+            messages: [
+              { role: "system", content: "You are a quiz grader. Respond only with valid JSON." },
+              { role: "user", content: prompt },
+            ],
+            maxTokens: 200,
+            temperature: 0,
+          });
+
+          const content = response?.choices?.[0]?.message?.content;
+          const parsed = content ? safeParseJson(content) : null;
+          isCorrect = parsed?.correct === true;
+          pointsEarned = isCorrect ? XP_PER_CORRECT : XP_PER_WRONG;
+          feedback = typeof parsed?.reason === "string" ? parsed.reason : question.explanation;
+        } catch (error) {
+          // Fallback to simple string matching.
+          console.error("AI grading failed, using fallback:", error);
+          isCorrect = normalize(question.correctAnswer) === normalize(args.answer);
+          pointsEarned = isCorrect ? XP_PER_CORRECT : XP_PER_WRONG;
+          feedback = question.explanation;
+        }
+      }
+    }
+
+    // Record answer with immediate grading.
     await ctx.db.insert("quizAnswers", {
       attemptId: args.attemptId,
       questionId: args.questionId,
       userAnswer: args.answer,
-      isCorrect: false, // Will be updated during completion
-      pointsEarned: 0, // Will be updated during completion
-      timeSpent: args.timeSpent
+      isCorrect,
+      pointsEarned,
+      timeSpent: args.timeSpent,
+      feedback,
+      gradedAt: Date.now(),
     });
-
-    const isCorrect = false;
-    const pointsEarned = 0;
 
     return {
       correct: isCorrect,
       pointsEarned,
-      explanation: question.explanation
+      explanation: feedback ?? question.explanation,
     };
   }
 });
@@ -299,8 +373,10 @@ export const getQuizAttemptDataInternal = internalQuery({
       _id: v.id("quizAnswers"),
       questionId: v.id("quizQuestions"),
       userAnswer: v.string(),
+      isCorrect: v.boolean(),
       pointsEarned: v.number(),
       timeSpent: v.optional(v.number()),
+      feedback: v.optional(v.string()),
     })),
     quiz: v.object({
       _id: v.id("quizzes"),
@@ -357,8 +433,10 @@ export const getQuizAttemptDataInternal = internalQuery({
         _id: a._id,
         questionId: a.questionId,
         userAnswer: a.userAnswer,
+        isCorrect: a.isCorrect,
         pointsEarned: a.pointsEarned,
         timeSpent: a.timeSpent,
+        feedback: (a as any).feedback,
       })),
       quiz: {
         _id: quiz._id,
@@ -485,97 +563,12 @@ export const completeQuizAttempt = action({
       throw new Error("Not all questions answered");
     }
 
-    // AI grading
-    const apiKey = process.env.OPENROUTER_API_KEY;
-    if (!apiKey) {
-      throw new Error("OpenRouter API key is not configured");
-    }
-
-    const gradedAnswers: Array<{ answerId: any; isCorrect: boolean; pointsEarned: number }> = [];
-    let correctCount = 0;
-
-    for (const answer of data.answers) {
-      const question = data.questions.find((q: any) => q._id === answer.questionId);
-      if (!question) continue;
-
-      // Skip grading for explicitly skipped questions.
-      if (typeof answer.userAnswer === "string" && answer.userAnswer === SKIPPED_ANSWER) {
-        gradedAnswers.push({
-          answerId: answer._id,
-          isCorrect: false,
-          pointsEarned: XP_PER_SKIPPED,
-        });
-        continue;
-      }
-
-      const chapterContext = `${data.chapter.subject} - ${data.chapter.grade} - ${data.chapter.identifiedTitle || 'Chapter'}`;
-
-      const prompt = `You are a strict quiz grader. Evaluate the student's answer for correctness.
-
-Question: ${question.question}
-Correct Answer: ${question.correctAnswer}
-Student's Answer: ${answer.userAnswer}
-Chapter Context: ${chapterContext}
-
-Instructions:
-- Determine if the student's answer is correct or incorrect.
-- For short answer questions, be strict but allow reasonable variations in wording.
-- If the answer is factually incorrect, mark it wrong.
-- Use internet knowledge to verify facts if needed.
-- Respond with ONLY a JSON object: {"correct": boolean, "reason": "brief explanation"}
-
-If the model does not have internet access, fall back to simple string matching.`;
-
-      try {
-        console.log(`[DEBUG] Grading Answer ${answer._id} with prompt length: ${prompt.length}`);
-
-        const response = await openRouterChat({
-          apiKey,
-          model: QUIZ_GRADING_MODEL,
-          messages: [
-            { role: "system", content: "You are a quiz grader. Respond only with valid JSON." },
-            { role: "user", content: prompt }
-          ],
-          maxTokens: 200,
-          temperature: 0,
-        });
-
-        const content = response?.choices?.[0]?.message?.content;
-        console.log(`[DEBUG] Grading Response:`, content);
-
-        const parsed = content ? safeParseJson(content) : null;
-        const isCorrect = parsed?.correct === true;
-        const pointsEarned = isCorrect ? XP_PER_CORRECT : XP_PER_WRONG;
-
-        if (isCorrect) correctCount += 1;
-
-        gradedAnswers.push({
-          answerId: answer._id,
-          isCorrect,
-          pointsEarned
-        });
-      } catch (error) {
-        console.error("AI grading failed, using fallback:", error);
-        // Fallback to simple string matching
-        const isCorrect = question.correctAnswer.toLowerCase().trim() === answer.userAnswer.toLowerCase().trim();
-        const pointsEarned = isCorrect ? XP_PER_CORRECT : XP_PER_WRONG;
-
-        if (isCorrect) correctCount += 1;
-
-        gradedAnswers.push({
-          answerId: answer._id,
-          isCorrect,
-          pointsEarned
-        });
-      }
-    }
-
-    // Update answers
-    await ctx.runMutation(internal.quizzes.updateQuizAnswersInternal, { answers: gradedAnswers });
+    // Answers are graded at submission time.
+    const correctCount = data.answers.filter((a: any) => a.isCorrect === true).length;
 
     // Calculate scores
     const totalPoints: number = data.questions.length * XP_PER_CORRECT;
-    const earnedPoints: number = gradedAnswers.reduce((sum: number, a: any) => sum + a.pointsEarned, 0);
+    const earnedPoints: number = data.answers.reduce((sum: number, a: any) => sum + (a.pointsEarned ?? 0), 0);
     const score: number = data.questions.length > 0 ? (correctCount / data.questions.length) * 100 : 0;
     const passed: boolean = score >= data.quiz.passingScore;
 
@@ -612,6 +605,7 @@ export const getQuizByChapter = query({
     quiz: v.optional(v.object({
       _creationTime: v.number(),
       _id: v.id("quizzes"),
+      chapterId: v.id("chapters"),
       title: v.string(),
       description: v.optional(v.string()),
       passingScore: v.number(),

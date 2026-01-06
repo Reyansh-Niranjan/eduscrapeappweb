@@ -10,6 +10,7 @@
 
 import type * as admin from "../admin.js";
 import type * as auth from "../auth.js";
+import type * as chapterText from "../chapterText.js";
 import type * as chatbot from "../chatbot.js";
 import type * as clear from "../clear.js";
 import type * as deepsearch from "../deepsearch.js";
@@ -33,6 +34,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   auth: typeof auth;
+  chapterText: typeof chapterText;
   chatbot: typeof chatbot;
   clear: typeof clear;
   deepsearch: typeof deepsearch;

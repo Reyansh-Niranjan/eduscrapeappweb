@@ -45,6 +45,8 @@ export default function Quiz({ quizId, onComplete, onClose }: QuizProps) {
   const [showResults, setShowResults] = useState(false);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [results, setResults] = useState<QuizCompletionResult | null>(null);
+  const [gradingResults, setGradingResults] = useState<Record<string, { correct: boolean; pointsEarned: number; explanation?: string }>>({});
+  const [submittingAnswer, setSubmittingAnswer] = useState(false);
 
   const startQuizAttempt = useMutation(api.quizzes.startQuizAttempt);
   const submitQuizAnswer = useMutation(api.quizzes.submitQuizAnswer);
@@ -105,6 +107,7 @@ export default function Quiz({ quizId, onComplete, onClose }: QuizProps) {
 
     try {
       setError(null);
+      setSubmittingAnswer(true);
       const timeSpentOnQuestion = timeSpent[questionKey] || 0;
 
       const result = await submitQuizAnswer({
@@ -113,6 +116,11 @@ export default function Quiz({ quizId, onComplete, onClose }: QuizProps) {
         answer,
         timeSpent: timeSpentOnQuestion
       });
+
+      setGradingResults((prev) => ({
+        ...prev,
+        [questionKey]: { correct: result.correct, pointsEarned: result.pointsEarned, explanation: result.explanation },
+      }));
 
       setSubmittedAnswers(prev => new Set([...prev, questionKey]));
 
@@ -125,6 +133,8 @@ export default function Quiz({ quizId, onComplete, onClose }: QuizProps) {
 
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to submit answer");
+    } finally {
+      setSubmittingAnswer(false);
     }
   };
 
@@ -141,19 +151,27 @@ export default function Quiz({ quizId, onComplete, onClose }: QuizProps) {
 
     try {
       setError(null);
+      setSubmittingAnswer(true);
       const timeSpentOnQuestion = timeSpent[questionKey] || 0;
 
-      await submitQuizAnswer({
+      const result = await submitQuizAnswer({
         attemptId: attempt.attemptId,
         questionId: question.questionId,
         answer: "__SKIPPED__",
         timeSpent: timeSpentOnQuestion,
       });
 
+      setGradingResults((prev) => ({
+        ...prev,
+        [questionKey]: { correct: result.correct, pointsEarned: result.pointsEarned, explanation: result.explanation },
+      }));
+
       setSubmittedAnswers((prev) => new Set([...prev, questionKey]));
       handleNext();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to skip question");
+    } finally {
+      setSubmittingAnswer(false);
     }
   };
 
@@ -226,6 +244,8 @@ export default function Quiz({ quizId, onComplete, onClose }: QuizProps) {
 
   const currentQuestion = attempt.questions[currentQuestionIndex];
   const isAnswered = submittedAnswers.has(String(currentQuestion.questionId));
+  const currentQuestionKey = String(currentQuestion.questionId);
+  const currentGrading = gradingResults[currentQuestionKey];
   const progress = ((currentQuestionIndex + 1) / attempt.questions.length) * 100;
 
   if (showConfirmationModal && results) {
@@ -472,6 +492,33 @@ export default function Quiz({ quizId, onComplete, onClose }: QuizProps) {
             )}
           </div>
 
+          {isAnswered && currentGrading && (
+            <div
+              className={`mt-4 p-3 rounded-lg border ${
+                currentGrading.correct
+                  ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-400"
+                  : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400"
+              }`}
+            >
+              <div className="flex items-center gap-2 font-medium">
+                {currentGrading.correct ? (
+                  <>
+                    <CheckCircle className="h-5 w-5" />
+                    Correct (+{currentGrading.pointsEarned})
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="h-5 w-5" />
+                    Incorrect (+{currentGrading.pointsEarned})
+                  </>
+                )}
+              </div>
+              {currentGrading.explanation ? (
+                <div className="mt-2 text-sm">{currentGrading.explanation}</div>
+              ) : null}
+            </div>
+          )}
+
           {error && (
             <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg">
               {error}
@@ -501,11 +548,11 @@ export default function Quiz({ quizId, onComplete, onClose }: QuizProps) {
             {!isAnswered ? (
               <button
                 onClick={handleSubmitAnswer}
-                disabled={!answers[currentQuestion.questionId]}
+                disabled={!answers[currentQuestion.questionId] || submittingAnswer}
                 className="flex items-center gap-2 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Send className="h-4 w-4" />
-                Submit Answer
+                {submittingAnswer ? "Checking..." : "Submit Answer"}
               </button>
             ) : (
               <div className="flex items-center gap-2 text-green-600">

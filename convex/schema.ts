@@ -109,6 +109,19 @@ const applicationTables = {
     .index("by_chapter", ["chapterId"])
     .index("by_user_chapter", ["userId", "chapterId"]),
 
+  // Per-page extracted chapter text (OCR/vision).
+  chapterPageTexts: defineTable({
+    chapterId: v.id("chapters"),
+    pageNumber: v.number(),
+    content: v.string(),
+    model: v.string(),
+    userId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_chapter", ["chapterId"])
+    .index("by_chapter_page", ["chapterId", "pageNumber"]),
+
   // Quiz tables
   quizzes: defineTable({
     chapterId: v.id("chapters"),
@@ -154,6 +167,8 @@ const applicationTables = {
     isCorrect: v.boolean(),
     pointsEarned: v.number(),
     timeSpent: v.optional(v.number()), // seconds on this question
+    feedback: v.optional(v.string()),
+    gradedAt: v.optional(v.number()),
   })
     .index("by_attempt", ["attemptId"]),
 };

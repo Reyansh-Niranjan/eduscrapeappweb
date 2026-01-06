@@ -1,8 +1,9 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { Download, ExternalLink } from "lucide-react";
 import { Document, Page } from "react-pdf";
 import { useAction, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { Id } from "../../../convex/_generated/dataModel";
 import { toast } from "sonner";
 
 interface PDFFile {
@@ -60,16 +61,22 @@ export default function PDFViewer({
   const [chapterCompletionAttempted, setChapterCompletionAttempted] = useState(false);
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
 
-  const renderPdfPageFromUrl = useAction(api.deepsearch.renderPdfPageFromUrl);
   const markChapterCompleted = useMutation(api.progress.markChapterCompleted);
-  const [convertedPages, setConvertedPages] = useState<Record<number, string>>({});
+  const extractChapterPageText = useAction(api.chapterText.extractChapterPageText);
+  const [pageExtractionInFlight, setPageExtractionInFlight] = useState(false);
+  const extractedPagesRef = useRef<Set<number>>(new Set());
+  const pageContainerRef = useRef<HTMLDivElement | null>(null);
+
+  const [autoExtractPageNumber, setAutoExtractPageNumber] = useState<number | null>(null);
+  const autoExtractContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setViewerOpenedAt(Date.now());
     setChapterCompletionAttempted(false);
     setQuizPromptShown(false);
     setShowQuizModal(false);
-    setConvertedPages({});
+    extractedPagesRef.current = new Set();
+    setAutoExtractPageNumber(null);
 
     debug("opened", {
       name: pdf.name,
@@ -80,6 +87,76 @@ export default function PDFViewer({
       hasQuiz,
     });
   }, [pdf.url]);
+
+  const pickNextUnextractedPage = (startAt: number, totalPages: number): number | null => {
+    for (let p = Math.max(1, startAt); p <= totalPages; p++) {
+      if (!extractedPagesRef.current.has(p)) return p;
+    }
+    return null;
+  };
+
+  const handlePageRendered = async () => {
+    if (!chapterId) return;
+    if (pageExtractionInFlight) return;
+    if (extractedPagesRef.current.has(pageNumber)) return;
+
+    const canvas = pageContainerRef.current?.querySelector("canvas") as HTMLCanvasElement | null;
+    if (!canvas) return;
+
+    try {
+      setPageExtractionInFlight(true);
+      extractedPagesRef.current.add(pageNumber);
+
+      const imageDataUrl = canvas.toDataURL("image/jpeg", 0.75);
+      await extractChapterPageText({
+        chapterId: chapterId as Id<"chapters">,
+        pageNumber,
+        imageDataUrl,
+      });
+    } catch (e) {
+      // Allow retry on failure.
+      extractedPagesRef.current.delete(pageNumber);
+      debug("page text extraction failed", e);
+    } finally {
+      setPageExtractionInFlight(false);
+    }
+  };
+
+  const handleAutoExtractRendered = async () => {
+    if (!chapterId) return;
+    if (!numPages) return;
+    const targetPage = autoExtractPageNumber;
+    if (!targetPage) return;
+    if (pageExtractionInFlight) return;
+    if (extractedPagesRef.current.has(targetPage)) {
+      setAutoExtractPageNumber(pickNextUnextractedPage(targetPage + 1, numPages));
+      return;
+    }
+
+    const canvas = autoExtractContainerRef.current?.querySelector("canvas") as HTMLCanvasElement | null;
+    if (!canvas) return;
+
+    try {
+      setPageExtractionInFlight(true);
+      extractedPagesRef.current.add(targetPage);
+
+      const imageDataUrl = canvas.toDataURL("image/jpeg", 0.75);
+      await extractChapterPageText({
+        chapterId: chapterId as Id<"chapters">,
+        pageNumber: targetPage,
+        imageDataUrl,
+      });
+
+      setAutoExtractPageNumber(pickNextUnextractedPage(targetPage + 1, numPages));
+    } catch (e) {
+      extractedPagesRef.current.delete(targetPage);
+      debug("auto page text extraction failed", { page: targetPage, error: e });
+      // Move on to avoid getting stuck; user can revisit later.
+      setAutoExtractPageNumber(pickNextUnextractedPage(targetPage + 1, numPages));
+    } finally {
+      setPageExtractionInFlight(false);
+    }
+  };
 
   useEffect(() => {
     debug("state", {
@@ -130,7 +207,7 @@ export default function PDFViewer({
       try {
         const timeSpent = Math.max(1, Math.floor((Date.now() - viewerOpenedAt) / 1000));
         await markChapterCompleted({
-          chapterId,
+          chapterId: chapterId as Id<"chapters">,
           timeSpent,
           pagesRead: numPages,
           totalPages: numPages,
@@ -140,32 +217,6 @@ export default function PDFViewer({
       }
     })();
   }, [chapterId, hasQuiz, numPages, pageNumber, chapterCompletionAttempted, viewerOpenedAt, markChapterCompleted]);
-
-  // Convert pages on-demand as the user views them.
-  useEffect(() => {
-    if (!pdf.sourceUrl) return;
-    if (convertedPages[pageNumber]) return;
-
-    let cancelled = false;
-    (async () => {
-      try {
-        const base64 = await renderPdfPageFromUrl({
-          url: pdf.sourceUrl!,
-          pageNumber,
-        });
-        if (cancelled) return;
-        if (base64) {
-          setConvertedPages((prev) => ({ ...prev, [pageNumber]: base64 }));
-        }
-      } catch {
-        // Keep viewer UX unchanged if conversion fails.
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [pdf.sourceUrl, pageNumber, convertedPages, renderPdfPageFromUrl]);
 
   const options = useMemo(() => ({
     isEvalSupported: false,
@@ -240,6 +291,14 @@ export default function PDFViewer({
             onLoadSuccess={({ numPages: loadedPages }) => {
               debug("onLoadSuccess", { loadedPages });
               onLoadSuccess(loadedPages);
+
+              // Kick off background extraction of all pages (sequential, offscreen).
+              if (chapterId) {
+                setAutoExtractPageNumber((prev) => {
+                  if (prev) return prev;
+                  return pickNextUnextractedPage(1, loadedPages);
+                });
+              }
             }}
             onLoadError={(err) => {
               debug("onLoadError", { err });
@@ -248,14 +307,37 @@ export default function PDFViewer({
             loading={<div className="text-center text-gray-300 py-6">Loading PDF...</div>}
             error={<div className="text-center text-red-300 py-6">Unable to load PDF.</div>}
           >
-            <div className="flex justify-center">
+            <div className="flex justify-center" ref={pageContainerRef}>
               <Page
                 pageNumber={pageNumber}
                 width={pageWidth}
                 renderAnnotationLayer={false}
                 renderTextLayer={false}
+                onRenderSuccess={() => {
+                  void handlePageRendered();
+                }}
               />
             </div>
+
+            {/* Offscreen renderer used to extract ALL pages sequentially without changing the visible page. */}
+            {chapterId && numPages && autoExtractPageNumber ? (
+              <div
+                ref={autoExtractContainerRef}
+                style={{ position: "absolute", left: -99999, top: 0, width: 0, height: 0, overflow: "hidden" }}
+                aria-hidden="true"
+              >
+                <Page
+                  key={`extract-${pdf.url}-${autoExtractPageNumber}`}
+                  pageNumber={autoExtractPageNumber}
+                  width={Math.min(1100, pageWidth)}
+                  renderAnnotationLayer={false}
+                  renderTextLayer={false}
+                  onRenderSuccess={() => {
+                    void handleAutoExtractRendered();
+                  }}
+                />
+              </div>
+            ) : null}
           </Document>
         </div>
       </div>
@@ -285,7 +367,7 @@ export default function PDFViewer({
                         try {
                           const timeSpent = Math.max(1, Math.floor((Date.now() - viewerOpenedAt) / 1000));
                           await markChapterCompleted({
-                            chapterId,
+                            chapterId: chapterId as Id<"chapters">,
                             timeSpent,
                             pagesRead: numPages,
                             totalPages: numPages,
