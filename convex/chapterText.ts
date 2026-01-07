@@ -4,35 +4,94 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { internal } from "./_generated/api";
 
 const VISION_MODEL = "qwen/qwen-2.5-vl-7b-instruct:free";
+const FALLBACK_VISION_MODEL = "nvidia/nemotron-nano-12b-v2-vl:free";
 
-async function openRouterChat(args: {
+function getVisionModels(): string[] {
+  const raw = process.env.OPENROUTER_VISION_MODELS;
+  const envSingle = process.env.OPENROUTER_VISION_MODEL;
+
+  const parts = (raw
+    ? raw.split(/[\n,]/g)
+    : envSingle
+      ? [envSingle]
+      : [VISION_MODEL, FALLBACK_VISION_MODEL])
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  // Dedupe, preserve order.
+  const seen = new Set<string>();
+  const models: string[] = [];
+  for (const m of parts) {
+    if (seen.has(m)) continue;
+    seen.add(m);
+    models.push(m);
+  }
+
+  return models.length > 0 ? models : [VISION_MODEL, FALLBACK_VISION_MODEL];
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function openRouterChatSafe(args: {
   apiKey: string;
-  model: string;
+  models: string[];
   messages: any[];
   maxTokens?: number;
   temperature?: number;
-}): Promise<any> {
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${args.apiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": "https://eduscrapeapp.com",
-      "X-Title": "EduScrapeApp",
-    },
-    body: JSON.stringify({
-      model: args.model,
-      messages: args.messages,
-      max_tokens: args.maxTokens ?? 1600,
-      temperature: args.temperature ?? 0.2,
-    }),
-  });
+}): Promise<{ ok: true; json: any } | { ok: false; error: string }> {
+  const url = "https://openrouter.ai/api/v1/chat/completions";
+  const maxAttempts = 4;
 
-  const textBody = await response.text();
-  if (!response.ok) {
-    throw new Error(`OpenRouter API error: ${response.status} ${response.statusText} ${textBody}`);
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${args.apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://eduscrapeapp.com",
+          "X-Title": "EduScrapeApp",
+        },
+        body: JSON.stringify({
+          ...(args.models.length > 1
+            ? { models: args.models, route: "fallback" as const }
+            : { model: args.models[0] }),
+          messages: args.messages,
+          max_tokens: args.maxTokens ?? 1600,
+          temperature: args.temperature ?? 0.2,
+        }),
+      });
+
+      const textBody = await response.text();
+      if (response.ok) return { ok: true, json: JSON.parse(textBody) };
+
+      // Retry transient upstream/provider failures.
+      const retryableStatuses = new Set([429, 500, 502, 503, 504]);
+      if (retryableStatuses.has(response.status) && attempt < maxAttempts) {
+        // Exponential backoff with a small cap.
+        const backoffMs = Math.min(2500, 300 * Math.pow(2, attempt - 1));
+        await sleep(backoffMs);
+        continue;
+      }
+
+      return {
+        ok: false,
+        error: `OpenRouter API error: ${response.status} ${response.statusText} ${textBody}`,
+      };
+    } catch (e) {
+      // Network errors / fetch exceptions are also retryable.
+      if (attempt < maxAttempts) {
+        const backoffMs = Math.min(2500, 300 * Math.pow(2, attempt - 1));
+        await sleep(backoffMs);
+        continue;
+      }
+      return { ok: false, error: `OpenRouter request failed: ${String(e)}` };
+    }
   }
-  return JSON.parse(textBody);
+
+  return { ok: false, error: "OpenRouter API error: exceeded retries" };
 }
 
 function clampText(input: string, maxChars: number): string {
@@ -78,6 +137,40 @@ export const getChapterTextForQuiz = internalQuery({
     }
 
     return { text: out.slice(0, maxChars) };
+  },
+});
+
+export const getChapterPageTextsForQuiz = internalQuery({
+  args: {
+    chapterId: v.id("chapters"),
+    maxPages: v.optional(v.number()),
+    maxCharsPerPage: v.optional(v.number()),
+  },
+  returns: v.object({
+    pages: v.array(
+      v.object({
+        pageNumber: v.number(),
+        content: v.string(),
+      })
+    ),
+  }),
+  handler: async (ctx, args) => {
+    const rows = await ctx.db
+      .query("chapterPageTexts")
+      .withIndex("by_chapter", (q) => q.eq("chapterId", args.chapterId))
+      .collect();
+
+    rows.sort((a, b) => a.pageNumber - b.pageNumber);
+
+    const maxPages = Math.max(1, Math.min(5000, Math.floor(args.maxPages ?? 2000)));
+    const maxCharsPerPage = Math.max(200, Math.min(12000, Math.floor(args.maxCharsPerPage ?? 3500)));
+
+    const pages = rows.slice(0, maxPages).map((r) => ({
+      pageNumber: r.pageNumber,
+      content: clampText(r.content, maxCharsPerPage),
+    }));
+
+    return { pages };
   },
 });
 
@@ -156,7 +249,10 @@ export const extractChapterPageText = action({
     }
 
     const apiKey = process.env.OPENROUTER_API_KEY;
-    if (!apiKey) throw new Error("OpenRouter API key is not configured");
+    if (!apiKey) {
+      // Fail gracefully so the PDF viewer doesn't crash.
+      return { ok: false };
+    }
 
     const prompt = `You are reading a single page of a school textbook PDF.
 
@@ -169,9 +265,11 @@ Task:
 Page number: ${args.pageNumber}
 Be thorough.`;
 
-    const response = await openRouterChat({
+    const models = getVisionModels();
+
+    const result = await openRouterChatSafe({
       apiKey,
-      model: VISION_MODEL,
+      models,
       messages: [
         { role: "system", content: "You are an OCR + study-note agent." },
         {
@@ -186,15 +284,60 @@ Be thorough.`;
       temperature: 0.2,
     });
 
+    if (!result.ok) {
+      console.error("OpenRouter extraction failed", {
+        chapterId: args.chapterId,
+        pageNumber: args.pageNumber,
+        error: result.error,
+      });
+      return { ok: false };
+    }
+
+    const response = result.json;
     const content: string = response?.choices?.[0]?.message?.content ?? "";
     const cleaned = clampText(content, 12000);
+    const usedModel = String(response?.model ?? models[0] ?? VISION_MODEL);
 
     await ctx.runMutation(internal.chapterText.upsertChapterPageTextInternal, {
       chapterId: args.chapterId,
       pageNumber: args.pageNumber,
       content: cleaned,
-      model: VISION_MODEL,
+      model: usedModel,
       userId,
+    });
+
+    return { ok: true };
+  },
+});
+
+// Start a server-side extraction job that continues page-by-page even if the user leaves.
+// The client should provide the PDF's public URL and the total page count.
+export const startChapterTextJob = action({
+  args: {
+    chapterId: v.id("chapters"),
+    pdfUrl: v.string(),
+    totalPages: v.number(),
+    forceRestart: v.optional(v.boolean()),
+  },
+  returns: v.object({ ok: v.boolean() }),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const totalPages = Math.max(1, Math.min(2000, Math.floor(args.totalPages)));
+
+    const { jobId } = await ctx.runMutation(internal.chapterTextJobs.upsertJobInternal, {
+      chapterId: args.chapterId,
+      pdfUrl: args.pdfUrl,
+      totalPages,
+      userId,
+      forceRestart: args.forceRestart,
+    });
+
+    // Run immediately.
+    await ctx.runMutation(internal.chapterTextJobs.scheduleJobBatchInternal, {
+      jobId,
+      delayMs: 0,
     });
 
     return { ok: true };

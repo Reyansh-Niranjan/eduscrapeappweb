@@ -8,6 +8,14 @@ import type { Id } from "./_generated/dataModel";
 
 const QUIZ_GEN_MODEL = "mistralai/devstral-2512:free";
 
+type QuizQuestionCandidate = {
+  question: string;
+  type: "multiple_choice" | "true_false" | "short_answer";
+  options?: [string, string, string, string];
+  correctAnswer: string;
+  explanation: string;
+};
+
 const QUIZ_JSON_SCHEMA = {
   name: "chapter_quiz_v1",
   strict: true,
@@ -120,6 +128,82 @@ function parseModelQuizPayload(rawContent: string): any {
   return safeParseJson(normalizeJsonLikeText(extracted));
 }
 
+function clampText(input: string, maxChars: number): string {
+  const normalized = String(input ?? "").trim();
+  if (normalized.length <= maxChars) return normalized;
+  return normalized.slice(0, maxChars);
+}
+
+function parseCandidatePayload(rawContent: string): any {
+  const direct = safeParseJson(normalizeJsonLikeText(stripMarkdownCodeFences(rawContent)));
+  if (direct) return direct;
+
+  const extracted = extractFirstJsonObject(rawContent);
+  if (!extracted) return null;
+  return safeParseJson(normalizeJsonLikeText(extracted));
+}
+
+function normalizeCandidate(q: any): QuizQuestionCandidate | null {
+  const type = String(q?.type ?? "").trim();
+  const question = String(q?.question ?? "").trim();
+  const correctAnswerRaw = String(q?.correctAnswer ?? "").trim();
+  const explanation = String(q?.explanation ?? "").trim();
+
+  if (!question) return null;
+
+  if (type === "multiple_choice") {
+    const opts = Array.isArray(q?.options)
+      ? q.options.map((o: any) => String(o).trim()).filter(Boolean).slice(0, 4)
+      : [];
+    if (opts.length !== 4) return null;
+    if (!correctAnswerRaw || !opts.includes(correctAnswerRaw)) return null;
+    return {
+      question,
+      type: "multiple_choice",
+      options: opts as [string, string, string, string],
+      correctAnswer: correctAnswerRaw,
+      explanation: explanation || "",
+    };
+  }
+
+  if (type === "true_false") {
+    const lc = correctAnswerRaw.toLowerCase();
+    const ca = lc === "true" ? "True" : lc === "false" ? "False" : "";
+    if (!ca) return null;
+    return {
+      question,
+      type: "true_false",
+      correctAnswer: ca,
+      explanation: explanation || "",
+    };
+  }
+
+  if (type === "short_answer") {
+    if (!correctAnswerRaw) return null;
+    return {
+      question,
+      type: "short_answer",
+      correctAnswer: correctAnswerRaw,
+      explanation: explanation || "",
+    };
+  }
+
+  return null;
+}
+
+function pickTypesForPage(need: Record<QuizQuestionCandidate["type"], number>, count: number): QuizQuestionCandidate["type"][] {
+  const types: QuizQuestionCandidate["type"][] = [];
+  const order: QuizQuestionCandidate["type"][] = ["multiple_choice", "true_false", "short_answer"];
+  for (let i = 0; i < count; i++) {
+    const next = order
+      .filter((t) => need[t] > 0)
+      .sort((a, b) => need[b] - need[a])[0];
+    types.push(next ?? "multiple_choice");
+    if (next) need[next] = Math.max(0, need[next] - 1);
+  }
+  return types;
+}
+
 function normalizePath(value: string): string {
   return value.replace(/\\/g, "/").replace(/^\/+/, "").trim();
 }
@@ -178,14 +262,16 @@ export const generateQuizForChapter = action({
     if (!chapter) throw new Error("Chapter not found");
     if (!book) throw new Error("Book record not found for chapter");
 
-    // Pull previously extracted per-page chapter text (generated via Qwen-VL from page images).
-    const extracted: { text: string } = await ctx.runQuery(internal.chapterText.getChapterTextForQuiz, {
+    // Pull previously extracted per-page chapter text.
+    const extracted = await ctx.runQuery(internal.chapterText.getChapterPageTextsForQuiz, {
       chapterId: args.chapterId,
-      maxChars: 30000,
+      maxPages: 2000,
+      maxCharsPerPage: 3500,
     });
 
-    const chapterText = (extracted?.text ?? "").trim();
-    if (chapterText.length < 500) {
+    const pages = extracted?.pages ?? [];
+    const totalChars = pages.reduce((sum: number, p: any) => sum + String(p?.content ?? "").length, 0);
+    if (totalChars < 500 || pages.length === 0) {
       throw new Error(
         "Chapter text is not prepared yet. Open the PDF and wait for page text extraction to finish, then generate the quiz again."
       );
@@ -194,192 +280,157 @@ export const generateQuizForChapter = action({
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) throw new Error("OpenRouter API key is not configured");
 
-    const prompt = `Return ONLY valid JSON (no markdown/code fences/commentary). Output MUST be compact/minified.
+    const targets: Record<QuizQuestionCandidate["type"], number> = {
+      multiple_choice: 10,
+      true_false: 5,
+      short_answer: 5,
+    };
 
-JSON shape:
-{"title":string,"description":string,"passingScore":number,"questions":[{"type":"multiple_choice"|"true_false"|"short_answer","question":string,"options"?:[string,string,string,string],"correctAnswer":string,"explanation":string}]}
+    const candidates: QuizQuestionCandidate[] = [];
+
+    const getNeed = () => {
+      const counts: Record<QuizQuestionCandidate["type"], number> = {
+        multiple_choice: 0,
+        true_false: 0,
+        short_answer: 0,
+      };
+      for (const c of candidates) counts[c.type] += 1;
+      return {
+        multiple_choice: Math.max(0, targets.multiple_choice - counts.multiple_choice),
+        true_false: Math.max(0, targets.true_false - counts.true_false),
+        short_answer: Math.max(0, targets.short_answer - counts.short_answer),
+      };
+    };
+
+    const generateForPage = async (pageNumber: number, pageText: string, types: QuizQuestionCandidate["type"][]) => {
+      const wants = types.reduce((acc: Record<string, number>, t) => {
+        acc[t] = (acc[t] ?? 0) + 1;
+        return acc;
+      }, {});
+
+      const prompt = `Return ONLY valid JSON (no markdown, no commentary).
+
+Shape:
+{"questions":[{"type":"multiple_choice"|"true_false"|"short_answer","question":string,"options"?:[string,string,string,string],"correctAnswer":string,"explanation":string}]}
 
 Rules:
-- Exactly 20 questions: 10 multiple_choice, 5 true_false, 5 short_answer.
-- Multiple choice: exactly 4 short options.
-- True/False: omit options; correctAnswer must be exactly "True" or "False".
-- Short answer: omit options; correctAnswer concise.
-- explanation may be "" (empty) or <= 80 chars.
-- Do NOT repeat keys (e.g. do not include passingScore twice).
-- Strictly grounded in CHAPTER TEXT.
+- Generate EXACTLY ${types.length} questions.
+- Required counts by type: ${JSON.stringify(wants)}
+- multiple_choice must have exactly 4 short options and correctAnswer must match one option.
+- true_false correctAnswer must be exactly "True" or "False".
+- explanation must be "" unless <= 80 chars.
+- Strictly grounded in the PAGE TEXT only.
+
+    Difficulty:
+    - Make questions twisted/tricky and difficult for students (NEET/JEE exam-style).
+    - Use plausible distractors that reflect common misconceptions.
+    - Prefer multi-step reasoning or cross-linking two facts/definitions from the page.
+    - Do NOT copy any real NEET/JEE questions verbatim; write ORIGINAL questions inspired by that style.
+    - Still ensure every answer is supported by the PAGE TEXT (no outside knowledge required).
 
 CHAPTER META: ${chapter.pdfPath} | Grade ${chapter.grade} | ${book.subject}
+PAGE: ${pageNumber}
 
-CHAPTER TEXT:
-${chapterText}`;
+PAGE TEXT:
+${clampText(pageText, 3500)}`;
 
-    const response = await openRouterChat({
-      apiKey,
-      model: QUIZ_GEN_MODEL,
-      messages: [
-        { role: "system", content: "You are a quiz generator. Return only valid JSON." },
-        { role: "user", content: prompt },
-      ],
-      // Headroom + compact output reduces truncation into invalid JSON.
-      maxTokens: 4200,
-      temperature: 0,
-      responseFormat: { type: "json_schema", json_schema: QUIZ_JSON_SCHEMA },
-    });
-
-    const content: string = response?.choices?.[0]?.message?.content ?? "";
-    let parsed = parseModelQuizPayload(content);
-
-    // One repair attempt if the model returned extra text / invalid JSON.
-    if (!parsed || !Array.isArray(parsed.questions)) {
-      console.warn(
-        "[quizGen] Model did not return valid JSON on first attempt. Retrying with repair prompt.",
-        { preview: String(content).slice(0, 400) }
-      );
-
-      const repair = await openRouterChat({
+      const response = await openRouterChat({
         apiKey,
         model: QUIZ_GEN_MODEL,
         messages: [
-          {
-            role: "system",
-            content:
-              "You will be given a malformed or non-JSON response. Convert it to ONLY valid JSON that matches the required schema. Output JSON only.",
-          },
-          {
-            role: "user",
-            content:
-              `Convert the following into valid JSON ONLY (no markdown, no commentary). Required shape is the same as before.\n\nRAW:\n${content}`,
-          },
+          { role: "system", content: "You generate difficult, tricky exam-style questions. Output JSON only." },
+          { role: "user", content: prompt },
         ],
-        maxTokens: 4200,
+        maxTokens: 1400,
         temperature: 0,
-        responseFormat: { type: "json_schema", json_schema: QUIZ_JSON_SCHEMA },
+        responseFormat: { type: "json_object" },
       });
 
-      const repairedContent: string = repair?.choices?.[0]?.message?.content ?? "";
-      parsed = parseModelQuizPayload(repairedContent);
+      const content: string = response?.choices?.[0]?.message?.content ?? "";
+      const parsed = parseCandidatePayload(content);
+      const qs = Array.isArray(parsed?.questions) ? parsed.questions : [];
+      return qs.map(normalizeCandidate).filter(Boolean) as QuizQuestionCandidate[];
+    };
+
+    // Pass 1: sweep pages and generate small batches per page.
+    for (const page of pages) {
+      const needNow = getNeed();
+      if (needNow.multiple_choice + needNow.true_false + needNow.short_answer === 0) break;
+
+      const plannedTypes = pickTypesForPage({ ...needNow }, 2);
+      if (!page?.content) continue;
+
+      try {
+        const generated = await generateForPage(page.pageNumber, String(page.content), plannedTypes);
+        for (const q of generated) {
+          candidates.push(q);
+        }
+      } catch (e) {
+        console.warn("[quizGen] page-by-page generation failed", { pageNumber: page.pageNumber, error: String(e) });
+      }
+
+      // Stop early if we already have plenty.
+      if (candidates.length >= 60) break;
     }
 
-    // Final strict retry: regenerate from scratch but keep the output compact.
-    if (!parsed || !Array.isArray(parsed.questions)) {
-      console.warn("[quizGen] JSON repair failed; retrying with strict compact prompt.");
+    // Pass 2: targeted top-up for missing types (still page-by-page).
+    let need = getNeed();
+    if (need.multiple_choice + need.true_false + need.short_answer > 0) {
+      for (const page of pages) {
+        need = getNeed();
+        if (need.multiple_choice + need.true_false + need.short_answer === 0) break;
+        if (!page?.content) continue;
 
-      const strictPrompt = `Return ONLY valid minified JSON. Start with { and end with }. No other characters.
-
-Template (fill values, keep keys exactly once):
-{"title":"...","description":"...","passingScore":70,"questions":[{"type":"multiple_choice","question":"...","options":["A","B","C","D"],"correctAnswer":"A","explanation":""}]}
-
-Rules:
-- Exactly 20 questions: 10 multiple_choice, 5 true_false, 5 short_answer.
-- explanation must be "" unless <= 80 chars.
-- No duplicate keys.
-- Strictly grounded in CHAPTER TEXT.
-
-CHAPTER TEXT:
-${chapterText}`;
-
-      const strict = await openRouterChat({
-        apiKey,
-        model: QUIZ_GEN_MODEL,
-        messages: [
-          { role: "system", content: "Return only valid JSON. No extra text." },
-          { role: "user", content: strictPrompt },
-        ],
-        maxTokens: 4200,
-        temperature: 0,
-        responseFormat: { type: "json_schema", json_schema: QUIZ_JSON_SCHEMA },
-      });
-
-      const strictContent: string = strict?.choices?.[0]?.message?.content ?? "";
-      parsed = parseModelQuizPayload(strictContent);
-    }
-
-    if (!parsed || !Array.isArray(parsed.questions)) {
-      throw new Error("Quiz generation failed: model did not return valid JSON");
-    }
-
-    const normalizedQuestions = parsed.questions
-      .slice(0, 30)
-      .map((q: any) => {
-        const type = String(q.type ?? "").trim();
-        const question = String(q.question ?? "").trim();
-        const correctAnswerRaw = String(q.correctAnswer ?? "").trim();
-        const explanation = String(q.explanation ?? "").trim();
-
-        if (!question) return null;
-
-        if (type === "multiple_choice") {
-          const opts = Array.isArray(q.options) ? q.options.map((o: any) => String(o).trim()).slice(0, 4) : [];
-          if (opts.length !== 4) return null;
-          if (!correctAnswerRaw || !opts.includes(correctAnswerRaw)) return null;
-          return {
-            question,
-            type: "multiple_choice" as const,
-            options: opts as [string, string, string, string],
-            correctAnswer: correctAnswerRaw,
-            explanation: explanation || "",
-            points: 100,
-          };
-        }
-
-        if (type === "true_false") {
-          const lc = correctAnswerRaw.toLowerCase();
-          const ca = lc === "true" ? "True" : lc === "false" ? "False" : "";
-          if (!ca) return null;
-          return {
-            question,
-            type: "true_false" as const,
-            options: undefined,
-            correctAnswer: ca,
-            explanation: explanation || "",
-            points: 100,
-          };
-        }
-
-        if (type === "short_answer") {
-          if (!correctAnswerRaw) return null;
-          return {
-            question,
-            type: "short_answer" as const,
-            options: undefined,
-            correctAnswer: correctAnswerRaw,
-            explanation: explanation || "",
-            points: 100,
-          };
-        }
-
-        return null;
-      })
-      .filter(Boolean) as Array<any>;
-
-    const validQuestions = normalizedQuestions.filter((q: any) => {
-      if (!q.question || !q.correctAnswer) return false;
-      if (q.type === "multiple_choice") {
-        if (!Array.isArray(q.options) || q.options.length !== 4) return false;
-        const match = q.options.find((o: string) => String(o).trim() === q.correctAnswer);
-        if (!match) {
-          q.correctAnswer = q.options[0];
+        const plannedTypes = pickTypesForPage({ ...need }, 2);
+        try {
+          const generated = await generateForPage(page.pageNumber, String(page.content), plannedTypes);
+          for (const q of generated) {
+            candidates.push(q);
+          }
+        } catch {
+          // ignore and continue
         }
       }
-      if (q.type === "true_false") {
-        if (q.correctAnswer !== "True" && q.correctAnswer !== "False") return false;
-      }
-      return true;
-    });
-
-    if (validQuestions.length < 20) {
-      throw new Error("Quiz generation failed: expected 20-30 valid questions");
     }
 
-    const fixedQuestions = validQuestions.slice(0, 30);
+    const byType = {
+      multiple_choice: candidates.filter((c) => c.type === "multiple_choice"),
+      true_false: candidates.filter((c) => c.type === "true_false"),
+      short_answer: candidates.filter((c) => c.type === "short_answer"),
+    };
+
+    if (
+      byType.multiple_choice.length < targets.multiple_choice ||
+      byType.true_false.length < targets.true_false ||
+      byType.short_answer.length < targets.short_answer
+    ) {
+      throw new Error("Quiz generation failed: not enough page-by-page questions generated yet");
+    }
+
+    const fixedQuestions = (
+      [
+        ...byType.multiple_choice.slice(0, targets.multiple_choice),
+        ...byType.true_false.slice(0, targets.true_false),
+        ...byType.short_answer.slice(0, targets.short_answer),
+      ]
+        // Attach points and ensure shape matches DB mutation.
+        .map((q) => ({
+          question: q.question,
+          type: q.type,
+          options: q.type === "multiple_choice" ? q.options : undefined,
+          correctAnswer: q.correctAnswer,
+          explanation: clampText(q.explanation || "", 80),
+          points: 100,
+        }))
+    );
 
     const created: { quizId: Id<"quizzes"> } = await ctx.runMutation(
       internal.quizzes.createGeneratedQuizInternal,
       {
       chapterId: args.chapterId,
-      title: String(parsed.title ?? basename(chapter.pdfPath)).slice(0, 120),
-      description: String(parsed.description ?? "Generated quiz").slice(0, 240),
-      passingScore: Number.isFinite(parsed.passingScore) ? Number(parsed.passingScore) : 60,
+      title: String(chapter.identifiedTitle ?? basename(chapter.pdfPath)).slice(0, 120),
+      description: "Generated quiz (page-by-page)",
+      passingScore: 70,
       timeLimit: undefined,
       maxAttempts: undefined,
       questions: fixedQuestions,

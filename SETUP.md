@@ -118,6 +118,28 @@ npx convex deploy
 
 - **Blank page / Convex errors**: confirm `VITE_CONVEX_URL` points to the correct deployment.
 - **Chatbot errors**: confirm `OPENROUTER_API_KEY` exists in Convex env vars (dev/prod).
+
+## 3.3 ElevenLabs (Voice: TTS + Realtime STT)
+
+ElevenLabs is integrated for:
+
+- **Text-to-Speech (TTS)** via Convex HTTP route: `/eleven/tts`
+- **Realtime Speech-to-Text (Scribe v2 Realtime)** via Convex HTTP route: `/eleven/scribe-token`
+
+Set these in **Convex Dashboard → Settings → Environment Variables** (dev/prod):
+
+- `ELEVENLABS_API_KEY` (keep secret)
+- `ELEVENLABS_DEFAULT_VOICE_ID` (required for TTS)
+
+Optional:
+
+- `ELEVENLABS_TTS_MODEL_ID` (default: `eleven_flash_v2_5`)
+- `ELEVENLABS_OUTPUT_FORMAT` (default: `mp3_44100_128`)
+
+Frontend (Vite) toggles (safe to be `VITE_`):
+
+- `VITE_TTS_PROVIDER=elevenlabs` (otherwise uses browser TTS)
+- `VITE_STT_PROVIDER=elevenlabs` (otherwise uses browser SpeechRecognition)
 - **Auth provider not showing**: confirm OAuth variables + `SITE_URL` are set correctly.
 
 ## Security checklist

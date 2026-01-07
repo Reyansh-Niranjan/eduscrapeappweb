@@ -1,3 +1,6 @@
+import { useState } from "react";
+import { getActiveTtsProvider, speakText, stopSpeaking } from "../lib/voice";
+
 interface ChatMessageProps {
   _id: string;
   _creationTime: number;
@@ -9,6 +12,7 @@ interface ChatMessageProps {
 export default function ChatMessage({ role, content, timestamp }: ChatMessageProps) {
   const isUser = role === 'user';
   const time = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
@@ -22,8 +26,36 @@ export default function ChatMessage({ role, content, timestamp }: ChatMessagePro
         >
           <p className="text-sm leading-relaxed whitespace-pre-wrap">{content}</p>
         </div>
-        <div className={`text-xs text-gray-400 mt-1 ${isUser ? 'text-right' : 'text-left'}`}>
-          {time}
+        <div className={`mt-1 flex items-center gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
+          <div className="text-xs text-gray-400">{time}</div>
+
+          {!isUser && (
+            <button
+              type="button"
+              className="text-gray-400 hover:text-white transition-colors"
+              title={isSpeaking ? `Stop (${getActiveTtsProvider()})` : `Play (${getActiveTtsProvider()})`}
+              onClick={async () => {
+                if (isSpeaking) {
+                  stopSpeaking();
+                  setIsSpeaking(false);
+                  return;
+                }
+
+                await speakText(content, {
+                  onStart: () => setIsSpeaking(true),
+                  onEnd: () => setIsSpeaking(false),
+                });
+              }}
+              aria-label={isSpeaking ? "Stop speaking" : "Speak message"}
+            >
+              {/* Speaker icon */}
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5L6 9H3v6h3l5 4V5z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.54 8.46a5 5 0 010 7.07" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.07 4.93a10 10 0 010 14.14" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
       

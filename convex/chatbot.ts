@@ -67,6 +67,23 @@ function truncate(text: string, maxLen: number): string {
   return `${text.slice(0, maxLen)}\n\n[truncated]`;
 }
 
+function stripHtml(input: string): string {
+  return input
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function decodeHtmlEntities(input: string): string {
+  return input
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&nbsp;/g, " ");
+}
+
 type ToolCall = {
   id: string;
   function: {
@@ -207,22 +224,37 @@ async function webSearch(query: string): Promise<string> {
   debugLog("web_search", { query });
   try {
     const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: {
+        // DuckDuckGo may return different markup without a UA.
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+    });
     const html = await response.text();
 
     // Parse simple results from DuckDuckGo HTML
     const results: string[] = [];
-    const resultRegex = /<a class="result__a"[^>]*>([^<]+)<\/a>[\s\S]*?<a class="result__snippet"[^>]*>([^<]+)<\/a>/g;
+    // DDG markup changes frequently; be permissive.
+    // Title link: <a class="result__a" href="...">...</a>
+    // Snippet is often <a|div|span class="result__snippet">...</a|div|span>
+    const resultRegex = /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<\s*(?:a|div|span)[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/\s*(?:a|div|span)\s*>/g;
     let match;
     let count = 0;
 
     while ((match = resultRegex.exec(html)) !== null && count < 5) {
-      results.push(`${match[1]}: ${match[2]}`);
+      const href = decodeHtmlEntities(match[1] || "");
+      const title = stripHtml(decodeHtmlEntities(match[2] || ""));
+      const snippet = stripHtml(decodeHtmlEntities(match[3] || ""));
+      if (!title) continue;
+      results.push(`${title}\n${href}${snippet ? `\n${snippet}` : ""}`);
       count++;
     }
 
     if (results.length === 0) {
-      return `No web results found for "${query}". This might be a topic better suited for the educational library.`;
+      return `No web results found for "${query}". Try rephrasing the query (e.g., add keywords like "GitHub", "docs", or "Wikipedia").`;
     }
 
     return `Web search results for "${query}":\n\n${results.join('\n\n')}`;

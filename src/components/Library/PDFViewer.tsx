@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { Download, ExternalLink } from "lucide-react";
 import { Document, Page } from "react-pdf";
-import { useAction, useMutation } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { toast } from "sonner";
@@ -63,12 +63,42 @@ export default function PDFViewer({
 
   const markChapterCompleted = useMutation(api.progress.markChapterCompleted);
   const extractChapterPageText = useAction(api.chapterText.extractChapterPageText);
+  const startChapterTextJob = useAction(api.chapterText.startChapterTextJob);
+  const jobStatus = useQuery(
+    api.chapterTextJobs.getJobStatusByChapter,
+    chapterId ? { chapterId: chapterId as Id<"chapters"> } : "skip"
+  );
   const [pageExtractionInFlight, setPageExtractionInFlight] = useState(false);
   const extractedPagesRef = useRef<Set<number>>(new Set());
   const pageContainerRef = useRef<HTMLDivElement | null>(null);
+  const lastExtractionToastAtRef = useRef<number>(0);
+  const lastStartedJobRef = useRef<string>("");
+  const lastFallbackToastKeyRef = useRef<string>("");
 
-  const [autoExtractPageNumber, setAutoExtractPageNumber] = useState<number | null>(null);
-  const autoExtractContainerRef = useRef<HTMLDivElement | null>(null);
+  // Server-side extraction handles sequential pages; no offscreen renderer needed.
+
+  const notifyExtractionTemporaryError = () => {
+    const now = Date.now();
+    // Avoid spamming a toast for every page.
+    if (now - lastExtractionToastAtRef.current < 15_000) return;
+    lastExtractionToastAtRef.current = now;
+
+    toast.error("Can't extract chapter info due to a temporary server error.", {
+      description: (
+        <span>
+          Open an issue on GitHub:{" "}
+          <a
+            href="https://github.com/Reyansh-Niranjan/eduscrapeappweb"
+            target="_blank"
+            rel="noreferrer noopener"
+            className="underline"
+          >
+            https://github.com/Reyansh-Niranjan/eduscrapeappweb
+          </a>
+        </span>
+      ),
+    });
+  };
 
   useEffect(() => {
     setViewerOpenedAt(Date.now());
@@ -76,7 +106,7 @@ export default function PDFViewer({
     setQuizPromptShown(false);
     setShowQuizModal(false);
     extractedPagesRef.current = new Set();
-    setAutoExtractPageNumber(null);
+    lastStartedJobRef.current = "";
 
     debug("opened", {
       name: pdf.name,
@@ -87,6 +117,22 @@ export default function PDFViewer({
       hasQuiz,
     });
   }, [pdf.url]);
+
+  useEffect(() => {
+    if (!chapterId) return;
+    if (!jobStatus) return;
+
+    if (jobStatus.fallbackActive && jobStatus.lastUsedModel) {
+      const key = `${chapterId}:${jobStatus.lastUsedModel}`;
+      if (lastFallbackToastKeyRef.current === key) return;
+      lastFallbackToastKeyRef.current = key;
+
+      // Keep the message specific to the requested behavior.
+      toast("Qwen model is down; using NVIDIA fallback for extraction.", {
+        description: `Now using: ${jobStatus.lastUsedModel}`,
+      });
+    }
+  }, [chapterId, jobStatus]);
 
   const pickNextUnextractedPage = (startAt: number, totalPages: number): number | null => {
     for (let p = Math.max(1, startAt); p <= totalPages; p++) {
@@ -108,54 +154,28 @@ export default function PDFViewer({
       extractedPagesRef.current.add(pageNumber);
 
       const imageDataUrl = canvas.toDataURL("image/jpeg", 0.75);
-      await extractChapterPageText({
+      const result = await extractChapterPageText({
         chapterId: chapterId as Id<"chapters">,
         pageNumber,
         imageDataUrl,
       });
+
+      if (!result?.ok) {
+        extractedPagesRef.current.delete(pageNumber);
+        notifyExtractionTemporaryError();
+      }
     } catch (e) {
       // Allow retry on failure.
       extractedPagesRef.current.delete(pageNumber);
       debug("page text extraction failed", e);
+      notifyExtractionTemporaryError();
     } finally {
       setPageExtractionInFlight(false);
     }
   };
 
   const handleAutoExtractRendered = async () => {
-    if (!chapterId) return;
-    if (!numPages) return;
-    const targetPage = autoExtractPageNumber;
-    if (!targetPage) return;
-    if (pageExtractionInFlight) return;
-    if (extractedPagesRef.current.has(targetPage)) {
-      setAutoExtractPageNumber(pickNextUnextractedPage(targetPage + 1, numPages));
-      return;
-    }
-
-    const canvas = autoExtractContainerRef.current?.querySelector("canvas") as HTMLCanvasElement | null;
-    if (!canvas) return;
-
-    try {
-      setPageExtractionInFlight(true);
-      extractedPagesRef.current.add(targetPage);
-
-      const imageDataUrl = canvas.toDataURL("image/jpeg", 0.75);
-      await extractChapterPageText({
-        chapterId: chapterId as Id<"chapters">,
-        pageNumber: targetPage,
-        imageDataUrl,
-      });
-
-      setAutoExtractPageNumber(pickNextUnextractedPage(targetPage + 1, numPages));
-    } catch (e) {
-      extractedPagesRef.current.delete(targetPage);
-      debug("auto page text extraction failed", { page: targetPage, error: e });
-      // Move on to avoid getting stuck; user can revisit later.
-      setAutoExtractPageNumber(pickNextUnextractedPage(targetPage + 1, numPages));
-    } finally {
-      setPageExtractionInFlight(false);
-    }
+    return;
   };
 
   useEffect(() => {
@@ -237,6 +257,11 @@ export default function PDFViewer({
           <div className="flex items-center gap-2 text-sm text-gray-300">
             {numPages ? `${pageNumber} / ${numPages} pages` : "Loading PDF..."}
             {viewerError && <span className="text-red-300">{viewerError}</span>}
+            {chapterId && jobStatus && (
+              <span className="text-gray-300">
+                | Extraction: <span className="font-medium text-white">{jobStatus.status}</span>
+              </span>
+            )}
           </div>
         </div>
 
@@ -292,13 +317,25 @@ export default function PDFViewer({
               debug("onLoadSuccess", { loadedPages });
               onLoadSuccess(loadedPages);
 
-              // Kick off background extraction of all pages (sequential, offscreen).
-              if (chapterId) {
-                setAutoExtractPageNumber((prev) => {
-                  if (prev) return prev;
-                  return pickNextUnextractedPage(1, loadedPages);
-                });
+              // Start server-side sequential extraction job.
+              if (chapterId && pdf.sourceUrl) {
+                const jobKey = `${chapterId}::${pdf.sourceUrl}::${loadedPages}`;
+                if (lastStartedJobRef.current !== jobKey) {
+                  lastStartedJobRef.current = jobKey;
+                  void startChapterTextJob({
+                    chapterId: chapterId as Id<"chapters">,
+                    pdfUrl: pdf.sourceUrl,
+                    totalPages: loadedPages,
+                  }).catch((e) => {
+                    debug("startChapterTextJob failed", e);
+                    notifyExtractionTemporaryError();
+                  });
+                }
               }
+
+              // Optional: still extract the currently visible page immediately (better UX),
+              // while the server job continues the rest.
+              void handlePageRendered();
             }}
             onLoadError={(err) => {
               debug("onLoadError", { err });
@@ -319,25 +356,6 @@ export default function PDFViewer({
               />
             </div>
 
-            {/* Offscreen renderer used to extract ALL pages sequentially without changing the visible page. */}
-            {chapterId && numPages && autoExtractPageNumber ? (
-              <div
-                ref={autoExtractContainerRef}
-                style={{ position: "absolute", left: -99999, top: 0, width: 0, height: 0, overflow: "hidden" }}
-                aria-hidden="true"
-              >
-                <Page
-                  key={`extract-${pdf.url}-${autoExtractPageNumber}`}
-                  pageNumber={autoExtractPageNumber}
-                  width={Math.min(1100, pageWidth)}
-                  renderAnnotationLayer={false}
-                  renderTextLayer={false}
-                  onRenderSuccess={() => {
-                    void handleAutoExtractRendered();
-                  }}
-                />
-              </div>
-            ) : null}
           </Document>
         </div>
       </div>

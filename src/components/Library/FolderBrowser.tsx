@@ -1,4 +1,5 @@
 import { FileArchive, FileText } from "lucide-react";
+import styles from "./FolderBrowser.module.css";
 
 interface ZipInfo {
   name: string;
@@ -35,28 +36,29 @@ export default function FolderBrowser({
 }: FolderBrowserProps) {
   if (currentItems.length === 0) {
     return (
-      <div className="rounded-xl shadow-sm p-8 text-center" style={{ background: 'var(--theme-card-bg)', color: 'var(--theme-text-secondary)' }}>
+      <div
+        className={`rounded-xl shadow-sm p-8 text-center ${styles.cardEmpty}`}
+      >
         <p>No items found</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl shadow-sm p-6" style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}>
+    <div className={`rounded-xl shadow-sm p-6 ${styles.card}`}>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-semibold" style={{ color: 'var(--theme-text)' }}>
+          <h2 className={`text-xl font-semibold ${styles.textPrimary}`}>
             {currentPath[currentPath.length - 1] || "Library"}
           </h2>
-          <p className="text-sm mt-1" style={{ color: 'var(--theme-text-secondary)' }}>
-            {currentItems.length} item{currentItems.length !== 1 ? 's' : ''}
+          <p className={`text-sm mt-1 ${styles.textSecondary}`}>
+            {currentItems.length} item{currentItems.length !== 1 ? "s" : ""}
           </p>
         </div>
         {currentPath.length > 1 && (
           <button
             onClick={onGoBack}
-            className="text-sm hover:text-purple-600 dark:hover:text-purple-400 transition font-medium"
-            style={{ color: 'var(--theme-text-secondary)' }}
+            className={`text-sm hover:text-purple-600 dark:hover:text-purple-400 transition font-medium ${styles.textSecondary}`}
           >
             ← Back
           </button>
@@ -73,13 +75,17 @@ export default function FolderBrowser({
                 onClick={() => onFolderClick(item.name)}
                 className="flex items-center gap-3 p-4 border-2 border-purple-400 dark:border-purple-600 bg-purple-50 dark:bg-purple-900/30 rounded-lg hover:border-purple-600 dark:hover:border-purple-400 hover:shadow-md transition text-left group"
               >
-                <img 
-                  src="/bookshelf-icon.svg" 
-                  alt="Bookshelf" 
+                <img
+                  src="/bookshelf-icon.svg"
+                  alt="Bookshelf"
                   className="h-10 w-10 flex-shrink-0 group-hover:scale-110 transition-transform"
                 />
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold truncate text-lg" style={{ color: 'var(--theme-text)' }}>{item.name}</h3>
+                  <h3
+                    className={`font-semibold truncate text-lg ${styles.textPrimary}`}
+                  >
+                    {item.name}
+                  </h3>
                 </div>
               </button>
             );
@@ -89,8 +95,8 @@ export default function FolderBrowser({
           if (item.isZipFile) {
             const zipInfo: ZipInfo = {
               name: item.name,
-              path: [...currentPath, item.name].join('/'),
-              url: `${baseUrl}/${[...currentPath, item.name].join('/')}`
+              path: [...currentPath, item.name].join("/"),
+              url: `${baseUrl}/${[...currentPath, item.name].join("/")}`,
             };
             return (
               <button
@@ -100,7 +106,11 @@ export default function FolderBrowser({
               >
                 <FileArchive className="h-10 w-10 text-blue-600 dark:text-blue-400 flex-shrink-0 group-hover:scale-110 transition-transform" />
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold truncate text-lg" style={{ color: 'var(--theme-text)' }}>{item.name.replace('.zip', '')}</h3>
+                  <h3
+                    className={`font-semibold truncate text-lg ${styles.textPrimary}`}
+                  >
+                    {item.name.replace(".zip", "")}
+                  </h3>
                 </div>
               </button>
             );
@@ -108,7 +118,7 @@ export default function FolderBrowser({
 
           // Render PDF files (direct)
           if (item.isPdfFile) {
-            const pdfUrl = `${baseUrl}/${[...currentPath, item.name].join('/')}`;
+            const pdfUrl = `${baseUrl}/${[...currentPath, item.name].join("/")}`;
             return (
               <button
                 key={`pdf-${index}`}
@@ -117,7 +127,11 @@ export default function FolderBrowser({
               >
                 <FileText className="h-10 w-10 text-orange-600 dark:text-orange-400 flex-shrink-0 group-hover:scale-110 transition-transform" />
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold truncate text-lg" style={{ color: 'var(--theme-text)' }}>{item.name.replace('.pdf', '')}</h3>
+                  <h3
+                    className={`font-semibold truncate text-lg ${styles.textPrimary}`}
+                  >
+                    {item.name.replace(".pdf", "")}
+                  </h3>
                 </div>
               </button>
             );

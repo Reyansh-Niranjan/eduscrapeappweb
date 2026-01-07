@@ -122,6 +122,26 @@ const applicationTables = {
     .index("by_chapter", ["chapterId"])
     .index("by_chapter_page", ["chapterId", "pageNumber"]),
 
+  // Background extraction job state so extraction continues server-side.
+  chapterTextJobs: defineTable({
+    chapterId: v.id("chapters"),
+    pdfUrl: v.string(),
+    totalPages: v.number(),
+    nextPageNumber: v.number(), // 1-based
+    status: v.union(v.literal("running"), v.literal("completed"), v.literal("paused")),
+    lastError: v.optional(v.string()),
+    lastPrimaryModel: v.optional(v.string()),
+    lastUsedModel: v.optional(v.string()),
+    fallbackActive: v.optional(v.boolean()),
+    userId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    startedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_chapter", ["chapterId"])
+    .index("by_status", ["status"]),
+
   // Quiz tables
   quizzes: defineTable({
     chapterId: v.id("chapters"),

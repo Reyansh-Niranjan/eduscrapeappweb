@@ -18,6 +18,7 @@
   "dependencies": {
     "@auth/core": "^0.37.4",
     "@convex-dev/auth": "^0.0.90",
+    "@elevenlabs/react": "^0.12.3",
     "clsx": "^2.1.1",
     "convex": "^1.31.2",
     "framer-motion": "^12.23.27",
@@ -29,8 +30,10 @@
     "pngjs": "^7.0.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
+    "react-markdown": "^10.1.0",
     "react-pdf": "^10.3.0",
     "react-spring": "^10.0.3",
+    "remark-gfm": "^4.0.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0"
   },

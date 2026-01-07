@@ -1,7 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { Bot, Send, X, Loader2, Sparkles } from 'lucide-react';
+import { Bot, Send, X, Loader2, Sparkles, Volume2, VolumeX } from 'lucide-react';
 import { useAction } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { speakText, stopSpeaking } from '../lib/voice';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -31,6 +34,7 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -56,6 +60,12 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
   useEffect(() => {
     if (isOpen) {
       inputRef.current?.focus();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      stopSpeaking();
     }
   }, [isOpen]);
 
@@ -98,6 +108,10 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
           timestamp: Date.now(),
         };
         setMessages(prev => [...prev, assistantMessage]);
+
+        if (voiceEnabled) {
+          void speakText(result.response);
+        }
 
         // Handle book opening (available from Convex backend)
         if (result.bookToOpen && onBookOpen) {
@@ -161,13 +175,30 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="p-1 hover:bg-white/20 rounded-lg transition"
-              aria-label="Close"
-            >
-              <X className="h-5 w-5" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setVoiceEnabled((v) => {
+                    const next = !v;
+                    if (!next) stopSpeaking();
+                    return next;
+                  });
+                }}
+                className="p-1 hover:bg-white/20 rounded-lg transition"
+                aria-label={voiceEnabled ? "Disable voice" : "Enable voice"}
+                title={voiceEnabled ? "Disable voice" : "Enable voice"}
+              >
+                {voiceEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
+              </button>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="p-1 hover:bg-white/20 rounded-lg transition"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
           {/* Messages */}
@@ -212,7 +243,52 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
                       : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-600'
                   }`}
                 >
-                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                  {msg.role === 'assistant' ? (
+                    <div className="text-sm whitespace-pre-wrap">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          h1: ({ children }) => (
+                            <h1 className="text-base font-semibold mb-2">{children}</h1>
+                          ),
+                          h2: ({ children }) => (
+                            <h2 className="text-base font-semibold mb-2">{children}</h2>
+                          ),
+                          h3: ({ children }) => (
+                            <h3 className="text-sm font-semibold mb-2">{children}</h3>
+                          ),
+                          p: ({ children }) => (
+                            <p className="text-sm whitespace-pre-wrap">{children}</p>
+                          ),
+                          ul: ({ children }) => (
+                            <ul className="list-disc pl-5 space-y-1 my-2 text-sm">{children}</ul>
+                          ),
+                          ol: ({ children }) => (
+                            <ol className="list-decimal pl-5 space-y-1 my-2 text-sm">{children}</ol>
+                          ),
+                          a: ({ href, children }) => (
+                            <a
+                              href={href}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="underline text-purple-600 dark:text-purple-400"
+                            >
+                              {children}
+                            </a>
+                          ),
+                          code: ({ children }) => (
+                            <code className="px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-800">
+                              {children}
+                            </code>
+                          ),
+                        }}
+                      >
+                        {msg.content}
+                      </ReactMarkdown>
+                    </div>
+                  ) : (
+                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                  )}
                 </div>
               </div>
             ))}

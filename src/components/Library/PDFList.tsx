@@ -18,8 +18,8 @@ interface PDFListProps {
 export default function PDFList({ pdfs, onView, onDownload, completedPdfPaths }: PDFListProps) {
   if (pdfs.length === 0) {
     return (
-      <div className="text-center py-12" style={{ color: 'var(--theme-text-secondary)' }}>
-        <FileText className="h-16 w-16 mx-auto mb-4" style={{ color: 'var(--theme-text-secondary)' }} />
+      <div className="text-center py-12 text-[var(--theme-text-secondary)]">
+        <FileText className="h-16 w-16 mx-auto mb-4 text-[var(--theme-text-secondary)]" />
         <p>No PDF files found in this archive</p>
       </div>
     );
@@ -44,7 +44,7 @@ export default function PDFList({ pdfs, onView, onDownload, completedPdfPaths }:
             <FileText className="h-8 w-8 text-orange-600 dark:text-orange-400 flex-shrink-0 group-hover:scale-110 transition-transform" />
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-2 mb-3">
-                <h3 className="font-medium truncate" style={{ color: 'var(--theme-text)' }} title={pdf.name}>
+                <h3 className="font-medium truncate text-[var(--theme-text)]" title={pdf.name}>
                   {pdf.name.replace('.pdf', '')}
                 </h3>
                 {isCompleted && (
@@ -53,6 +53,7 @@ export default function PDFList({ pdfs, onView, onDownload, completedPdfPaths }:
               </div>
               <div className="flex gap-2">
                 <button
+                  type="button"
                   onClick={() => onView(pdf)}
                   className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded transition flex items-center gap-1.5 flex-1 justify-center"
                 >
@@ -60,10 +61,13 @@ export default function PDFList({ pdfs, onView, onDownload, completedPdfPaths }:
                   View
                 </button>
                 <button
+                  type="button"
                   onClick={() => onDownload(pdf)}
+                  aria-label={`Download ${pdf.name}`}
+                  title={`Download ${pdf.name}`}
                   className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-sm rounded transition flex items-center gap-1.5"
                 >
-                  <Download className="h-3.5 w-3.5" />
+                  <Download className="h-3.5 w-3.5" aria-hidden="true" focusable="false" />
                 </button>
               </div>
             </div>

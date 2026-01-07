@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useMemo, useState, memo } from "react";
+import { Suspense, lazy, useMemo, useState, memo } from "react";
 import AIAssistant from "./AIAssistant";
 import ProfileCompletionBanner from "./ProfileCompletionBanner";
 import ThemeToggle from "./ThemeToggle";
@@ -8,7 +8,6 @@ import {
   LayoutDashboard,
   UserCircle,
   Trophy,
-  Target,
   Zap,
   Users,
   Shield,
@@ -29,7 +28,7 @@ function SectionLoader({ label }: { label: string }) {
     <div className="flex items-center justify-center min-h-[400px]">
       <div className="text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto" />
-        <p className="mt-4" style={{ color: 'var(--theme-text-secondary)' }}>Loading {label}…</p>
+        <p className="mt-4 text-[var(--theme-text-secondary)]">Loading {label}…</p>
       </div>
     </div>
   );
@@ -38,52 +37,6 @@ function SectionLoader({ label }: { label: string }) {
 interface DashboardProps {
   onLogout: () => void;
 }
-
-// Particle effect component
-const ParticleEffect = ({ trigger }: { trigger: boolean }) => {
-  const seeds = useMemo(
-    () =>
-      Array.from({ length: 20 }).map(() => ({
-        startX: Math.random() * 100 - 50,
-        startY: Math.random() * 100 - 50,
-        endX: Math.random() * 200 - 100,
-        endY: Math.random() * 200 - 100,
-      })),
-    [trigger]
-  );
-
-  if (!trigger) return null;
-
-  return (
-    <motion.div
-      className="absolute inset-0 pointer-events-none"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-    >
-      {seeds.map((seed, i) => (
-        <motion.div
-          key={i}
-          className="absolute w-2 h-2 bg-purple-500 rounded-full"
-          initial={{
-            x: seed.startX,
-            y: seed.startY,
-            scale: 0,
-          }}
-          animate={{
-            x: seed.endX,
-            y: seed.endY,
-            scale: [0, 1, 0],
-          }}
-          transition={{
-            duration: 1,
-            delay: i * 0.05,
-          }}
-        />
-      ))}
-    </motion.div>
-  );
-};
 
 // Memoized Overview component to prevent unnecessary re-renders
 const DashboardOverview = memo(
@@ -113,16 +66,52 @@ const DashboardOverview = memo(
     onViewProgress?: () => void;
     onStartSession?: () => void;
   }) => {
-  const [showParticles, setShowParticles] = useState(false);
   const role = (userRole || "student").toLowerCase();
   const isAdmin = role.includes("admin");
   const isTeacher = role.includes("teacher");
   const isStudent = !isAdmin && !isTeacher;
 
-  const completionPct =
-    typeof userProgress?.completionPercentage === "number"
-      ? Math.max(0, Math.min(100, Math.round(userProgress.completionPercentage)))
-      : null;
+  const chaptersPerMonth = useQuery(
+    api.progress.getChaptersPerMonth,
+    isStudent ? { months: 6 } : "skip"
+  );
+
+  const chart = useMemo(() => {
+    const pts = chaptersPerMonth?.points ?? [];
+    if (pts.length === 0) return null;
+
+    const values = pts.map((p) => p.count);
+    const max = Math.max(1, ...values);
+
+    const width = 100;
+    const height = 44;
+    const padX = 4;
+    const padY = 6;
+    const innerW = width - padX * 2;
+    const innerH = height - padY * 2;
+
+    const points = pts.map((p, i) => {
+      const x = padX + (innerW * (pts.length === 1 ? 0 : i / (pts.length - 1)));
+      const y = padY + innerH * (1 - p.count / max);
+      return { x, y, count: p.count, month: p.month };
+    });
+
+    const polyline = points.map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(" ");
+    const latest = points[points.length - 1]?.count ?? 0;
+
+    const monthLabel = (ym: string) => {
+      const [y, m] = ym.split("-");
+      const dt = new Date(Number(y), Math.max(0, Number(m) - 1), 1);
+      return dt.toLocaleString(undefined, { month: "short" });
+    };
+
+    return {
+      polyline,
+      dots: points,
+      latest,
+      labels: pts.map((p) => monthLabel(p.month)),
+    };
+  }, [chaptersPerMonth]);
 
   const lastActivityText = (() => {
     const ts = userProgress?.lastActivity;
@@ -141,12 +130,6 @@ const DashboardOverview = memo(
     return `Keep your ${streak}-day learning streak alive!`;
   })();
 
-  useEffect(() => {
-    if (!showParticles) return;
-    const t = window.setTimeout(() => setShowParticles(false), 1200);
-    return () => window.clearTimeout(t);
-  }, [showParticles]);
-
   return (
     <motion.div
       className="px-6 py-12"
@@ -156,15 +139,13 @@ const DashboardOverview = memo(
     >
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
         <motion.header
-          className="card flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
-          style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+          className="card flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-[var(--theme-card-bg)] border border-[var(--theme-border)]"
           whileHover={{ y: -2 }}
           transition={{ duration: 0.2 }}
         >
           <div>
             <motion.h1
-              className="text-3xl font-bold"
-              style={{ color: 'var(--theme-text)' }}
+              className="text-3xl font-bold text-[var(--theme-text)]"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2 }}
@@ -176,8 +157,7 @@ const DashboardOverview = memo(
                   : "Student Dashboard"}
             </motion.h1>
             <motion.p
-              className="mt-2 text-sm"
-              style={{ color: 'var(--theme-text-secondary)' }}
+              className="mt-2 text-sm text-[var(--theme-text-secondary)]"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4 }}
@@ -196,7 +176,7 @@ const DashboardOverview = memo(
             transition={{ delay: 0.6 }}
           >
             <Trophy className="w-5 h-5 text-yellow-500" />
-            <span className="text-sm font-medium" style={{ color: 'var(--theme-text-secondary)' }}>
+            <span className="text-sm font-medium text-[var(--theme-text-secondary)]">
               {userName ? `${userName} • ` : ""}
               {isAdmin ? "Admin" : isTeacher ? "Teacher" : `Grade ${grade || "—"}`}
             </span>
@@ -212,39 +192,58 @@ const DashboardOverview = memo(
         >
           {isStudent && (
           <motion.div
-            className="card text-center p-6"
-            style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+            className="card text-center p-6 bg-[var(--theme-card-bg)] border border-[var(--theme-border)]"
             whileHover={{ y: -5, scale: 1.02 }}
             transition={{ duration: 0.2 }}
-            onClick={() => setShowParticles(true)}
           >
             <motion.div
               className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-3"
               whileHover={{ rotate: 360 }}
               transition={{ duration: 0.5 }}
             >
-              <Target className="w-6 h-6 text-white" />
+              <BarChart3 className="w-6 h-6 text-white" />
             </motion.div>
-            <h3 className="font-semibold mb-2" style={{ color: 'var(--theme-text)' }}>Learning Goals</h3>
-            <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-              <motion.div
-                className="bg-purple-500 h-2 rounded-full"
-                initial={{ width: 0 }}
-                animate={{ width: `${completionPct ?? 0}%` }}
-                transition={{ duration: 1, delay: 0.8 }}
-              />
-            </div>
-            <p className="text-xs" style={{ color: 'var(--theme-text-secondary)' }}>
-              {completionPct === null ? "—" : `${completionPct}% Complete`}
-            </p>
-            <ParticleEffect trigger={showParticles} />
+            <h3 className="font-semibold mb-2 text-[var(--theme-text)]">Chapters per month</h3>
+            {chart ? (
+              <div className="w-full">
+                <svg viewBox="0 0 100 44" className="w-full h-16">
+                  <polyline
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="text-purple-500"
+                    points={chart.polyline}
+                  />
+                  {chart.dots.map((d, idx) => (
+                    <circle
+                      key={idx}
+                      cx={d.x}
+                      cy={d.y}
+                      r={1.8}
+                      className="fill-purple-500"
+                    />
+                  ))}
+                </svg>
+                <div className="flex items-center justify-between text-xs text-[var(--theme-text-secondary)]">
+                  <span>{chart.labels[0]}</span>
+                  <span>{chart.labels[Math.floor(chart.labels.length / 2)]}</span>
+                  <span>{chart.labels[chart.labels.length - 1]}</span>
+                </div>
+                <p className="mt-2 text-xs text-[var(--theme-text-secondary)]">
+                  This month: <span className="font-medium text-[var(--theme-text)]">{chart.latest}</span>
+                </p>
+              </div>
+            ) : (
+              <p className="text-xs text-[var(--theme-text-secondary)]">
+                No monthly data yet.
+              </p>
+            )}
           </motion.div>
           )}
 
           {isStudent && (
           <motion.div
-            className="card text-center p-6"
-            style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+            className="card text-center p-6 bg-[var(--theme-card-bg)] border border-[var(--theme-border)]"
             whileHover={{ y: -5, scale: 1.02 }}
             transition={{ duration: 0.2 }}
           >
@@ -254,7 +253,7 @@ const DashboardOverview = memo(
             >
               <Zap className="w-6 h-6 text-white" />
             </motion.div>
-            <h3 className="font-semibold mb-2" style={{ color: 'var(--theme-text)' }}>XP Points</h3>
+            <h3 className="font-semibold mb-2 text-[var(--theme-text)]">XP Points</h3>
             <motion.div
               className="text-2xl font-bold text-teal-500"
               initial={{ scale: 0 }}
@@ -263,14 +262,13 @@ const DashboardOverview = memo(
             >
               {typeof userProgress?.totalXP === "number" ? userProgress.totalXP.toLocaleString() : "—"}
             </motion.div>
-            <p className="text-xs" style={{ color: 'var(--theme-text-secondary)' }}>Total</p>
+            <p className="text-xs text-[var(--theme-text-secondary)]">Total</p>
           </motion.div>
           )}
 
           {isStudent && (
           <motion.div
-            className="card text-center p-6"
-            style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+            className="card text-center p-6 bg-[var(--theme-card-bg)] border border-[var(--theme-border)]"
             whileHover={{ y: -5, scale: 1.02 }}
             transition={{ duration: 0.2 }}
           >
@@ -280,7 +278,7 @@ const DashboardOverview = memo(
             >
               <BookOpen className="w-6 h-6 text-white" />
             </motion.div>
-            <h3 className="font-semibold mb-2" style={{ color: 'var(--theme-text)' }}>Books Completed</h3>
+            <h3 className="font-semibold mb-2 text-[var(--theme-text)]">Books Completed</h3>
             <motion.div
               className="text-2xl font-bold text-green-500"
               initial={{ x: -20, opacity: 0 }}
@@ -289,62 +287,58 @@ const DashboardOverview = memo(
             >
               {typeof userProgress?.booksCompleted === "number" ? userProgress.booksCompleted : "—"}
             </motion.div>
-            <p className="text-xs" style={{ color: 'var(--theme-text-secondary)' }}>All time</p>
+            <p className="text-xs text-[var(--theme-text-secondary)]">All time</p>
           </motion.div>
           )}
 
           {isTeacher && (
             <>
               <motion.div
-                className="card text-center p-6"
-                style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+                className="card text-center p-6 bg-[var(--theme-card-bg)] border border-[var(--theme-border)]"
                 whileHover={{ y: -5, scale: 1.02 }}
                 transition={{ duration: 0.2 }}
               >
                 <div className="w-12 h-12 bg-teal-500 rounded-full flex items-center justify-center mx-auto mb-3">
                   <FolderKanban className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="font-semibold mb-2" style={{ color: 'var(--theme-text)' }}>Resource Hub</h3>
-                <p className="text-xs" style={{ color: 'var(--theme-text-secondary)' }}>Organize and share materials</p>
+                <h3 className="font-semibold mb-2 text-[var(--theme-text)]">Resource Hub</h3>
+                <p className="text-xs text-[var(--theme-text-secondary)]">Organize and share materials</p>
               </motion.div>
 
               <motion.div
-                className="card text-center p-6"
-                style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+                className="card text-center p-6 bg-[var(--theme-card-bg)] border border-[var(--theme-border)]"
                 whileHover={{ y: -5, scale: 1.02 }}
                 transition={{ duration: 0.2 }}
               >
                 <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-3">
                   <Users className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="font-semibold mb-2" style={{ color: 'var(--theme-text)' }}>Class Insights</h3>
-                <p className="text-xs" style={{ color: 'var(--theme-text-secondary)' }}>Track engagement trends</p>
+                <h3 className="font-semibold mb-2 text-[var(--theme-text)]">Class Insights</h3>
+                <p className="text-xs text-[var(--theme-text-secondary)]">Track engagement trends</p>
               </motion.div>
 
               <motion.div
-                className="card text-center p-6"
-                style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+                className="card text-center p-6 bg-[var(--theme-card-bg)] border border-[var(--theme-border)]"
                 whileHover={{ y: -5, scale: 1.02 }}
                 transition={{ duration: 0.2 }}
               >
                 <div className="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center mx-auto mb-3">
                   <Zap className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="font-semibold mb-2" style={{ color: 'var(--theme-text)' }}>Automation</h3>
-                <p className="text-xs" style={{ color: 'var(--theme-text-secondary)' }}>Keep curricula up to date</p>
+                <h3 className="font-semibold mb-2 text-[var(--theme-text)]">Automation</h3>
+                <p className="text-xs text-[var(--theme-text-secondary)]">Keep curricula up to date</p>
               </motion.div>
 
               <motion.div
-                className="card text-center p-6"
-                style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+                className="card text-center p-6 bg-[var(--theme-card-bg)] border border-[var(--theme-border)]"
                 whileHover={{ y: -5, scale: 1.02 }}
                 transition={{ duration: 0.2 }}
               >
                 <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-3">
                   <BookOpen className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="font-semibold mb-2" style={{ color: 'var(--theme-text)' }}>Library</h3>
-                <p className="text-xs" style={{ color: 'var(--theme-text-secondary)' }}>Find and assign content</p>
+                <h3 className="font-semibold mb-2 text-[var(--theme-text)]">Library</h3>
+                <p className="text-xs text-[var(--theme-text-secondary)]">Find and assign content</p>
               </motion.div>
             </>
           )}
@@ -352,55 +346,51 @@ const DashboardOverview = memo(
           {isAdmin && (
             <>
               <motion.div
-                className="card text-center p-6"
-                style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+                className="card text-center p-6 bg-[var(--theme-card-bg)] border border-[var(--theme-border)]"
                 whileHover={{ y: -5, scale: 1.02 }}
                 transition={{ duration: 0.2 }}
               >
                 <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-3">
                   <Shield className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="font-semibold mb-2" style={{ color: 'var(--theme-text)' }}>System</h3>
-                <p className="text-xs" style={{ color: 'var(--theme-text-secondary)' }}>Platform health & access</p>
+                <h3 className="font-semibold mb-2 text-[var(--theme-text)]">System</h3>
+                <p className="text-xs text-[var(--theme-text-secondary)]">Platform health & access</p>
               </motion.div>
 
               <motion.div
-                className="card text-center p-6"
-                style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+                className="card text-center p-6 bg-[var(--theme-card-bg)] border border-[var(--theme-border)]"
                 whileHover={{ y: -5, scale: 1.02 }}
                 transition={{ duration: 0.2 }}
               >
                 <div className="w-12 h-12 bg-teal-500 rounded-full flex items-center justify-center mx-auto mb-3">
                   <Users className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="font-semibold mb-2" style={{ color: 'var(--theme-text)' }}>Users</h3>
-                <p className="text-xs" style={{ color: 'var(--theme-text-secondary)' }}>Manage accounts & roles</p>
+                <h3 className="font-semibold mb-2 text-[var(--theme-text)]">Users</h3>
+                <p className="text-xs text-[var(--theme-text-secondary)]">Manage accounts & roles</p>
               </motion.div>
 
               <motion.div
-                className="card text-center p-6"
-                style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+                className="card text-center p-6 bg-[var(--theme-card-bg)] border border-[var(--theme-border)]"
                 whileHover={{ y: -5, scale: 1.02 }}
                 transition={{ duration: 0.2 }}
               >
                 <div className="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center mx-auto mb-3">
                   <BarChart3 className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="font-semibold mb-2" style={{ color: 'var(--theme-text)' }}>Analytics</h3>
-                <p className="text-xs" style={{ color: 'var(--theme-text-secondary)' }}>Usage & performance</p>
+                <h3 className="font-semibold mb-2 text-[var(--theme-text)]">Analytics</h3>
+                <p className="text-xs text-[var(--theme-text-secondary)]">Usage & performance</p>
               </motion.div>
 
               <motion.div
-                className="card text-center p-6"
-                style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+                className="card text-center p-6 bg-[var(--theme-card-bg)] border border-[var(--theme-border)]"
                 whileHover={{ y: -5, scale: 1.02 }}
                 transition={{ duration: 0.2 }}
               >
                 <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-3">
                   <FolderKanban className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="font-semibold mb-2" style={{ color: 'var(--theme-text)' }}>Content</h3>
-                <p className="text-xs" style={{ color: 'var(--theme-text-secondary)' }}>Projects & updates</p>
+                <h3 className="font-semibold mb-2 text-[var(--theme-text)]">Content</h3>
+                <p className="text-xs text-[var(--theme-text-secondary)]">Projects & updates</p>
               </motion.div>
             </>
           )}
@@ -413,13 +403,12 @@ const DashboardOverview = memo(
           transition={{ delay: 0.5 }}
         >
           <motion.div
-            className="card hover-lift p-6"
-            style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+            className="card hover-lift p-6 bg-[var(--theme-card-bg)] border border-[var(--theme-border)]"
             whileHover={{ y: -5, scale: 1.02 }}
             transition={{ duration: 0.2 }}
           >
-            <h2 className="text-lg font-semibold mb-3" style={{ color: 'var(--theme-text)' }}>Quick Actions</h2>
-            <p className="text-sm mb-4" style={{ color: 'var(--theme-text-secondary)' }}>
+            <h2 className="text-lg font-semibold mb-3 text-[var(--theme-text)]">Quick Actions</h2>
+            <p className="text-sm mb-4 text-[var(--theme-text-secondary)]">
               Access your favorite resources and continue learning.
             </p>
             <motion.button
@@ -433,13 +422,12 @@ const DashboardOverview = memo(
           </motion.div>
 
           <motion.div
-            className="card hover-lift p-6"
-            style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+            className="card hover-lift p-6 bg-[var(--theme-card-bg)] border border-[var(--theme-border)]"
             whileHover={{ y: -5, scale: 1.02 }}
             transition={{ duration: 0.2 }}
           >
-            <h2 className="text-lg font-semibold mb-3" style={{ color: 'var(--theme-text)' }}>Recent Activity</h2>
-            <p className="text-sm mb-4" style={{ color: 'var(--theme-text-secondary)' }}>
+            <h2 className="text-lg font-semibold mb-3 text-[var(--theme-text)]">Recent Activity</h2>
+            <p className="text-sm mb-4 text-[var(--theme-text-secondary)]">
               {lastActivityText}
             </p>
             <motion.button
@@ -453,13 +441,12 @@ const DashboardOverview = memo(
           </motion.div>
 
           <motion.div
-            className="card hover-lift p-6"
-            style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+            className="card hover-lift p-6 bg-[var(--theme-card-bg)] border border-[var(--theme-border)]"
             whileHover={{ y: -5, scale: 1.02 }}
             transition={{ duration: 0.2 }}
           >
-            <h2 className="text-lg font-semibold mb-3" style={{ color: 'var(--theme-text)' }}>Study Streak</h2>
-            <p className="text-sm mb-4" style={{ color: 'var(--theme-text-secondary)' }}>
+            <h2 className="text-lg font-semibold mb-3 text-[var(--theme-text)]">Study Streak</h2>
+            <p className="text-sm mb-4 text-[var(--theme-text-secondary)]">
               {streakText}
             </p>
             <motion.button
@@ -474,8 +461,7 @@ const DashboardOverview = memo(
         </motion.section>
 
         <motion.section
-          className="card p-6"
-          style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+          className="card p-6 bg-[var(--theme-card-bg)] border border-[var(--theme-border)]"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7 }}
@@ -483,8 +469,8 @@ const DashboardOverview = memo(
         >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-xl font-semibold" style={{ color: 'var(--theme-text)' }}>Learning Path</h2>
-              <p className="text-sm" style={{ color: 'var(--theme-text-secondary)' }}>
+              <h2 className="text-xl font-semibold text-[var(--theme-text)]">Learning Path</h2>
+              <p className="text-sm text-[var(--theme-text-secondary)]">
                 Continue your personalized learning journey with curated content and challenges.
               </p>
             </div>
@@ -530,12 +516,12 @@ export default function Dashboard({ onLogout }: DashboardProps) {
   }), [userProfile?.grade, activeTab]);
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--theme-bg)' }}>
+    <div className="min-h-screen bg-[var(--theme-bg)]">
       {/* Profile Completion Banner */}
       <ProfileCompletionBanner />
       
       {/* Navigation Tabs */}
-      <div style={{ background: 'var(--theme-nav-bg)', borderBottom: '1px solid var(--theme-border)' }}>
+      <div className="bg-[var(--theme-nav-bg)] border-b border-[var(--theme-border)]">
         <div className="max-w-6xl mx-auto px-6">
           <div className="flex items-center justify-between py-4">
             <div className="flex gap-4">
@@ -544,9 +530,8 @@ export default function Dashboard({ onLogout }: DashboardProps) {
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
                   activeTab === "overview"
                     ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 font-semibold"
-                    : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                    : "hover:bg-gray-100 dark:hover:bg-gray-800 text-[var(--theme-text-secondary)]"
                 }`}
-                style={{ color: activeTab === "overview" ? undefined : 'var(--theme-text-secondary)' }}
               >
                 <LayoutDashboard className="h-4 w-4" />
                 Dashboard
@@ -556,9 +541,8 @@ export default function Dashboard({ onLogout }: DashboardProps) {
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
                   activeTab === "library"
                     ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 font-semibold"
-                    : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                    : "hover:bg-gray-100 dark:hover:bg-gray-800 text-[var(--theme-text-secondary)]"
                 }`}
-                style={{ color: activeTab === "library" ? undefined : 'var(--theme-text-secondary)' }}
               >
                 <BookOpen className="h-4 w-4" />
                 Library
@@ -568,9 +552,8 @@ export default function Dashboard({ onLogout }: DashboardProps) {
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
                   activeTab === "profile"
                     ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 font-semibold"
-                    : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                    : "hover:bg-gray-100 dark:hover:bg-gray-800 text-[var(--theme-text-secondary)]"
                 }`}
-                style={{ color: activeTab === "profile" ? undefined : 'var(--theme-text-secondary)' }}
               >
                 <UserCircle className="h-4 w-4" />
                 Profile
@@ -581,8 +564,7 @@ export default function Dashboard({ onLogout }: DashboardProps) {
               <ThemeToggle />
               <button
                 onClick={onLogout}
-                className="inline-flex items-center justify-center rounded-lg border-2 px-4 py-2 text-sm font-semibold transition hover:border-purple-500 hover:text-purple-600 dark:hover:text-purple-400"
-                style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text-secondary)' }}
+                className="inline-flex items-center justify-center rounded-lg border-2 border-[var(--theme-border)] px-4 py-2 text-sm font-semibold text-[var(--theme-text-secondary)] transition hover:border-purple-500 hover:text-purple-600 dark:hover:text-purple-400"
               >
                 Log out
               </button>

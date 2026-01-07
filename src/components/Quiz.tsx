@@ -3,6 +3,7 @@ import { useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { Clock, CheckCircle, XCircle, ArrowLeft, ArrowRight, Send } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface Question {
   questionId: Id<"quizQuestions">;
@@ -216,7 +217,7 @@ export default function Quiz({ quizId, onComplete, onClose }: QuizProps) {
 
   if (loading && !attempt) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--theme-bg)' }}>
+      <div className="min-h-screen flex items-center justify-center bg-[var(--theme-bg)]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
       </div>
     );
@@ -224,11 +225,11 @@ export default function Quiz({ quizId, onComplete, onClose }: QuizProps) {
 
   if (error && !attempt) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6" style={{ background: 'var(--theme-bg)' }}>
+      <div className="min-h-screen flex items-center justify-center p-6 bg-[var(--theme-bg)]">
         <div className="max-w-md mx-auto text-center">
           <XCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2" style={{ color: 'var(--theme-text)' }}>Error</h2>
-          <p style={{ color: 'var(--theme-text-secondary)' }}>{error}</p>
+          <h2 className="text-xl font-semibold mb-2 text-[var(--theme-text)]">Error</h2>
+          <p className="text-[var(--theme-text-secondary)]">{error}</p>
           <button
             onClick={onClose}
             className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
@@ -286,18 +287,18 @@ export default function Quiz({ quizId, onComplete, onClose }: QuizProps) {
     };
 
     return (
-      <div className="min-h-screen p-6" style={{ background: 'var(--theme-bg)' }}>
+      <div className="min-h-screen p-6 bg-[var(--theme-bg)]">
         <div className="max-w-2xl mx-auto">
-          <div className="rounded-xl shadow-sm p-8 text-center" style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}>
+          <div className="rounded-xl shadow-sm p-8 text-center bg-[var(--theme-card-bg)] border border-[var(--theme-border)]">
             <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--theme-text)' }}>Quiz Completed!</h2>
+            <h2 className="text-2xl font-bold mb-4 text-[var(--theme-text)]">Quiz Completed!</h2>
             <div className="space-y-4 mb-6">
               <div>
-                <p className="text-lg" style={{ color: 'var(--theme-text-secondary)' }}>Score</p>
+                <p className="text-lg text-[var(--theme-text-secondary)]">Score</p>
                 <p className="text-3xl font-bold text-green-600">{results.score.toFixed(1)}%</p>
               </div>
               <div>
-                <p className="text-lg" style={{ color: 'var(--theme-text-secondary)' }}>XP Earned</p>
+                <p className="text-lg text-[var(--theme-text-secondary)]">XP Earned</p>
                 <p className="text-3xl font-bold text-purple-600">+{results.xpEarned}</p>
               </div>
               {results.passed ? (
@@ -307,7 +308,7 @@ export default function Quiz({ quizId, onComplete, onClose }: QuizProps) {
               )}
             </div>
             <div className="mb-6">
-              <p className="text-lg mb-4" style={{ color: 'var(--theme-text)' }}>
+              <p className="text-lg mb-4 text-[var(--theme-text)]">
                 Are you sure you have completed this chapter fully and won't require to do it again?
               </p>
               <div className="flex gap-4 justify-center">
@@ -360,18 +361,18 @@ export default function Quiz({ quizId, onComplete, onClose }: QuizProps) {
     };
 
     return (
-      <div className="min-h-screen p-6" style={{ background: 'var(--theme-bg)' }}>
+      <div className="min-h-screen p-6 bg-[var(--theme-bg)]">
         <div className="max-w-2xl mx-auto">
-          <div className="rounded-xl shadow-sm p-8 text-center" style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}>
+          <div className="rounded-xl shadow-sm p-8 text-center bg-[var(--theme-card-bg)] border border-[var(--theme-border)]">
             <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--theme-text)' }}>Quiz Completed!</h2>
+            <h2 className="text-2xl font-bold mb-4 text-[var(--theme-text)]">Quiz Completed!</h2>
             <div className="space-y-4 mb-6">
               <div>
-                <p className="text-lg" style={{ color: 'var(--theme-text-secondary)' }}>Score</p>
+                <p className="text-lg text-[var(--theme-text-secondary)]">Score</p>
                 <p className="text-3xl font-bold text-green-600">{results.score.toFixed(1)}%</p>
               </div>
               <div>
-                <p className="text-lg" style={{ color: 'var(--theme-text-secondary)' }}>XP Earned</p>
+                <p className="text-lg text-[var(--theme-text-secondary)]">XP Earned</p>
                 <p className="text-3xl font-bold text-purple-600">+{results.xpEarned}</p>
               </div>
               {results.passed ? (
@@ -401,10 +402,10 @@ export default function Quiz({ quizId, onComplete, onClose }: QuizProps) {
   }
 
   return (
-    <div className="min-h-screen p-6" style={{ background: 'var(--theme-bg)' }}>
+    <div className="min-h-screen p-6 bg-[var(--theme-bg)]">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="rounded-xl shadow-sm p-6 mb-6" style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}>
+        <div className="rounded-xl shadow-sm p-6 mb-6 bg-[var(--theme-card-bg)] border border-[var(--theme-border)]">
           <div className="flex items-center justify-between mb-4">
             <button
               onClick={onClose}
@@ -413,29 +414,31 @@ export default function Quiz({ quizId, onComplete, onClose }: QuizProps) {
               <ArrowLeft className="h-4 w-4" />
               Exit Quiz
             </button>
-            <div className="text-sm" style={{ color: 'var(--theme-text-secondary)' }}>
+            <div className="text-sm text-[var(--theme-text-secondary)]">
               Question {currentQuestionIndex + 1} of {attempt.questions.length}
             </div>
           </div>
 
           {/* Progress Bar */}
           <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
-            <div
+            <motion.div
               className="bg-purple-600 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            ></div>
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              transition={{ duration: 0.3 }}
+            />
           </div>
 
           {/* Timer - Optional */}
-          <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--theme-text-secondary)' }}>
+          <div className="flex items-center gap-2 text-sm text-[var(--theme-text-secondary)]">
             <Clock className="h-4 w-4" />
             Time spent: {Math.floor((Date.now() - startTime) / 1000 / 60)}:{String(Math.floor((Date.now() - startTime) / 1000) % 60).padStart(2, '0')}
           </div>
         </div>
 
         {/* Question */}
-        <div className="rounded-xl shadow-sm p-8 mb-6" style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}>
-          <h2 className="text-xl font-semibold mb-6" style={{ color: 'var(--theme-text)' }}>
+        <div className="rounded-xl shadow-sm p-8 mb-6 bg-[var(--theme-card-bg)] border border-[var(--theme-border)]">
+          <h2 className="text-xl font-semibold mb-6 text-[var(--theme-text)]">
             {currentQuestion.question}
           </h2>
 
@@ -454,7 +457,7 @@ export default function Quiz({ quizId, onComplete, onClose }: QuizProps) {
                       disabled={isAnswered}
                       className="text-purple-600 focus:ring-purple-500"
                     />
-                    <span style={{ color: 'var(--theme-text)' }}>{option}</span>
+                    <span className="text-[var(--theme-text)]">{option}</span>
                   </label>
                 ))}
               </div>
@@ -473,7 +476,7 @@ export default function Quiz({ quizId, onComplete, onClose }: QuizProps) {
                       disabled={isAnswered}
                       className="text-purple-600 focus:ring-purple-500"
                     />
-                    <span style={{ color: 'var(--theme-text)' }}>{option}</span>
+                    <span className="text-[var(--theme-text)]">{option}</span>
                   </label>
                 ))}
               </div>
@@ -485,8 +488,7 @@ export default function Quiz({ quizId, onComplete, onClose }: QuizProps) {
                 onChange={(e) => handleAnswerChange(currentQuestion.questionId, e.target.value)}
                 disabled={isAnswered}
                 placeholder="Type your answer here..."
-                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
-                style={{ background: 'var(--theme-input-bg)', border: '1px solid var(--theme-border)', color: 'var(--theme-text)' }}
+                className="w-full p-3 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none bg-[var(--theme-input-bg)] border border-[var(--theme-border)] text-[var(--theme-text)]"
                 rows={4}
               />
             )}

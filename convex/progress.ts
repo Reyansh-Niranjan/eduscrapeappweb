@@ -514,3 +514,55 @@ export const getChapterWithBook = query({
     return { chapter: chapter as any, book: (book as any) || undefined };
   },
 });
+
+export const getChaptersPerMonth = query({
+  args: {
+    months: v.optional(v.number()),
+  },
+  returns: v.object({
+    points: v.array(
+      v.object({
+        month: v.string(), // YYYY-MM
+        count: v.number(),
+      })
+    ),
+  }),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const months = Math.max(3, Math.min(24, Math.floor(args.months ?? 6)));
+    const now = new Date();
+
+    // Build the month buckets (ascending), e.g. ["2025-08", ..., "2026-01"].
+    const buckets: string[] = [];
+    for (let i = months - 1; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      buckets.push(key);
+    }
+    const counts = new Map<string, number>(buckets.map((k) => [k, 0]));
+    const earliest = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1).getTime();
+
+    const rows = await ctx.db
+      .query("chapterProgress")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+
+    for (const row of rows) {
+      if (!row.completed) continue;
+      const ts = row.completedAt;
+      if (typeof ts !== "number") continue;
+      if (ts < earliest) continue;
+
+      const d = new Date(ts);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      if (!counts.has(key)) continue;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+
+    return {
+      points: buckets.map((month) => ({ month, count: counts.get(month) ?? 0 })),
+    };
+  },
+});

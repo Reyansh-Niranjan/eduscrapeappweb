@@ -423,37 +423,42 @@ export default function Library({ bookToOpen, onStartQuiz }: LibraryProps) {
   }
 
   return (
-    <div className="min-h-screen p-6" style={{ background: 'var(--theme-bg)' }}>
+    <div className="min-h-screen p-6 bg-[var(--theme-bg)]">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="rounded-xl shadow-sm p-6 mb-6" style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}>
+        <div className="rounded-xl shadow-sm p-6 mb-6 bg-[var(--theme-card-bg)] border border-[var(--theme-border)]">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--theme-text)' }}>Library</h1>
-              <p style={{ color: 'var(--theme-text-secondary)' }}>
-                Browse and access educational materials for {userGrade || 'your grade'}
+              <h1 className="text-3xl font-bold mb-2 text-[var(--theme-text)]">Library</h1>
+              <p className="text-[var(--theme-text-secondary)]">
+                Browse and access educational materials for {userGrade || "your grade"}
               </p>
             </div>
-            
-            <select
-              value={userGrade}
-              onChange={(e) => {
-                setUserGrade(e.target.value);
-                navigateToFolder([e.target.value]);
-              }}
-              className="px-4 py-2 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              style={{ background: 'var(--theme-input-bg)', border: '1px solid var(--theme-border)', color: 'var(--theme-text)' }}
-            >
-              {Array.from({ length: 12 }, (_, i) => `Class${i + 1}`).map(grade => (
-                <option key={grade} value={grade}>
-                  {grade.replace('Class', 'Class ')}
-                </option>
-              ))}
-            </select>
+
+            <div>
+              <label htmlFor="grade-select" className="sr-only">
+                Select grade
+              </label>
+              <select
+                id="grade-select"
+                value={userGrade}
+                onChange={(e) => {
+                  setUserGrade(e.target.value);
+                  navigateToFolder([e.target.value]);
+                }}
+                className="px-4 py-2 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-[var(--theme-input-bg)] border border-[var(--theme-border)] text-[var(--theme-text)]"
+              >
+                {Array.from({ length: 12 }, (_, i) => `Class${i + 1}`).map((grade) => (
+                  <option key={grade} value={grade}>
+                    {grade.replace("Class", "Class ")}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {currentPath.length > 0 && (
-            <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--theme-border)' }}>
+            <div className="mt-4 pt-4 border-t border-[var(--theme-border)]">
               <Breadcrumb
                 currentPath={currentPath}
                 onNavigateHome={goToHome}
@@ -478,25 +483,26 @@ export default function Library({ bookToOpen, onStartQuiz }: LibraryProps) {
           <div className="flex items-center justify-center py-12">
             <div className="flex flex-col items-center gap-4">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
-              <p className="font-medium" style={{ color: 'var(--theme-text-secondary)' }}>{progress.stage}</p>
+              <p className="font-medium text-[var(--theme-text-secondary)]">{progress.stage}</p>
             </div>
           </div>
         )}
 
         {!loading && selectedZip && pdfs.length > 0 && (
-          <div className="rounded-xl shadow-sm p-6" style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}>
+          <div className="rounded-xl shadow-sm p-6 bg-[var(--theme-card-bg)] border border-[var(--theme-border)]">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-xl font-semibold" style={{ color: 'var(--theme-text)' }}>{selectedZip.name}</h2>
-                <p className="text-sm mt-1" style={{ color: 'var(--theme-text-secondary)' }}>{pdfs.length} PDF{pdfs.length !== 1 ? 's' : ''} available</p>
+                <h2 className="text-xl font-semibold text-[var(--theme-text)]">{selectedZip.name}</h2>
+                <p className="text-sm mt-1 text-[var(--theme-text-secondary)]">
+                  {pdfs.length} PDF{pdfs.length !== 1 ? "s" : ""} available
+                </p>
               </div>
               <button
                 onClick={() => {
                   setSelectedZip(null);
                   setPdfs([]);
                 }}
-                className="text-sm hover:text-purple-600 dark:hover:text-purple-400 transition font-medium"
-                style={{ color: 'var(--theme-text-secondary)' }}
+                className="text-sm text-[var(--theme-text-secondary)] hover:text-purple-600 dark:hover:text-purple-400 transition font-medium"
               >
                 ← Back to files
               </button>
@@ -523,12 +529,15 @@ export default function Library({ bookToOpen, onStartQuiz }: LibraryProps) {
         )}
 
         {!loading && !selectedZip && currentItems.length === 0 && currentPath.length > 0 && (
-          <div className="rounded-xl shadow-sm p-12 text-center" style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}>
-            <Book className="h-16 w-16 mx-auto mb-4" style={{ color: 'var(--theme-text-secondary)' }} />
-            <h3 className="text-lg font-medium mb-2" style={{ color: 'var(--theme-text)' }}>No items found</h3>
-            <p className="mb-4" style={{ color: 'var(--theme-text-secondary)' }}>This folder appears to be empty.</p>
+          <div className="rounded-xl shadow-sm p-12 text-center bg-[var(--theme-card-bg)] border border-[var(--theme-border)]">
+            <Book className="h-16 w-16 mx-auto mb-4 text-[var(--theme-text-secondary)]" />
+            <h3 className="text-lg font-medium mb-2 text-[var(--theme-text)]">No items found</h3>
+            <p className="mb-4 text-[var(--theme-text-secondary)]">This folder appears to be empty.</p>
             {currentPath.length > 1 && (
-              <button onClick={goBack} className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-medium">
+              <button
+                onClick={goBack}
+                className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-medium"
+              >
                 ← Go back
               </button>
             )}
@@ -536,10 +545,12 @@ export default function Library({ bookToOpen, onStartQuiz }: LibraryProps) {
         )}
 
         {!loading && currentPath.length === 0 && (
-          <div className="rounded-xl shadow-sm p-12 text-center" style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}>
+          <div className="rounded-xl shadow-sm p-12 text-center bg-[var(--theme-card-bg)] border border-[var(--theme-border)]">
             <Book className="h-16 w-16 text-purple-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2" style={{ color: 'var(--theme-text)' }}>Welcome to the Library</h3>
-            <p style={{ color: 'var(--theme-text-secondary)' }}>Select your grade above to start browsing educational materials</p>
+            <h3 className="text-lg font-medium mb-2 text-[var(--theme-text)]">Welcome to the Library</h3>
+            <p className="text-[var(--theme-text-secondary)]">
+              Select your grade above to start browsing educational materials
+            </p>
           </div>
         )}
       </div>
