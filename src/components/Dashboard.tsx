@@ -492,6 +492,16 @@ DashboardOverview.displayName = "DashboardOverview";
 
 const Quiz = lazy(() => import("./Quiz"));
 
+function ProfileBannerFallback() {
+  return (
+    <div className="px-6 pt-6">
+      <div className="max-w-3xl mx-auto rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-card-bg)] p-4 text-sm text-[var(--theme-text-secondary)]">
+        We couldn’t load your profile reminder right now. You can still use the dashboard; refresh to retry.
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard({ onLogout }: DashboardProps) {
   const [activeTab, setActiveTab] = useState<"overview" | "library" | "profile" | "quiz">("overview");
   const [bookToNavigate, setBookToNavigate] = useState<{ path: string; name: string } | null>(null);
@@ -564,13 +574,7 @@ export default function Dashboard({ onLogout }: DashboardProps) {
   return (
     <div className="min-h-screen bg-[var(--theme-bg)]">
       {/* Profile Completion Banner */}
-      <ErrorBoundary fallback={
-        <div className="px-6 pt-6">
-          <div className="max-w-3xl mx-auto rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-card-bg)] p-4 text-sm text-[var(--theme-text-secondary)]">
-            We couldn’t load your profile reminder right now. You can still use the dashboard; refresh to retry.
-          </div>
-        </div>
-      }>
+      <ErrorBoundary fallback={<ProfileBannerFallback />}>
         <ProfileCompletionBanner />
       </ErrorBoundary>
       
