@@ -564,7 +564,9 @@ export default function Dashboard({ onLogout }: DashboardProps) {
   return (
     <div className="min-h-screen bg-[var(--theme-bg)]">
       {/* Profile Completion Banner */}
-      <ProfileCompletionBanner />
+      <ErrorBoundary>
+        <ProfileCompletionBanner />
+      </ErrorBoundary>
       
       {/* Navigation Tabs */}
       <div className="bg-[var(--theme-nav-bg)] border-b border-[var(--theme-border)]">
