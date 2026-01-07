@@ -29,15 +29,16 @@ type View = "home" | "admin" | "login" | "dashboard";
 
 const getViewFromURL = (): View => {
   const { pathname, hash, search } = window.location;
-  
-  // Check pathname first
-  if (pathname === "/admin") return "admin";
-  if (pathname === "/dashboard") return "dashboard";
-  
-  // Check hash
+
+  // Check hash first (works reliably with static hosts + rewrites)
   if (hash === "#admin") return "admin";
   if (hash === "#login") return "login";
   if (hash === "#dashboard") return "dashboard";
+
+  // Then check pathname (for direct links like /dashboard)
+  if (pathname === "/admin") return "admin";
+  if (pathname === "/login") return "login";
+  if (pathname === "/dashboard") return "dashboard";
   
   // Check search params
   const params = new URLSearchParams(search);
@@ -83,10 +84,20 @@ export default function App() {
           <Suspense fallback={<FullPageLoader />}>
             <Login
               onCancel={() => {
+                try {
+                  window.history.pushState({}, "", "/");
+                } catch {
+                  // noop
+                }
                 window.location.hash = "";
                 setCurrentView("home");
               }}
               onSuccess={() => {
+                try {
+                  window.history.pushState({}, "", "/");
+                } catch {
+                  // noop
+                }
                 window.location.hash = "#dashboard";
                 setCurrentView("dashboard");
               }}
@@ -96,6 +107,11 @@ export default function App() {
           <Suspense fallback={<FullPageLoader />}>
             <Dashboard
               onLogout={() => {
+                try {
+                  window.history.pushState({}, "", "/");
+                } catch {
+                  // noop
+                }
                 window.location.hash = "";
                 setCurrentView("home");
               }}

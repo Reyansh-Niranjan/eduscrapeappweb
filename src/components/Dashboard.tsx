@@ -14,7 +14,7 @@ import {
   BarChart3,
   FolderKanban,
 } from "lucide-react";
-import { useQuery } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { motion } from "framer-motion";
@@ -496,8 +496,9 @@ export default function Dashboard({ onLogout }: DashboardProps) {
   const [activeTab, setActiveTab] = useState<"overview" | "library" | "profile" | "quiz">("overview");
   const [bookToNavigate, setBookToNavigate] = useState<{ path: string; name: string } | null>(null);
   const [currentQuiz, setCurrentQuiz] = useState<{ quizId: Id<"quizzes"> } | null>(null);
-  const userProfile = useQuery(api.userProfiles.getMyProfile);
-  const userProgress = useQuery(api.progress.getUserProgress);
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const userProfile = useQuery(api.userProfiles.getMyProfile, isAuthenticated ? {} : "skip");
+  const userProgress = useQuery(api.progress.getUserProgress, isAuthenticated ? {} : "skip");
 
   const handleBookOpen = (book: { path: string; name: string }) => {
     toast(`Opening: ${book.name}`);
@@ -514,6 +515,51 @@ export default function Dashboard({ onLogout }: DashboardProps) {
     grade: userProfile?.grade,
     currentPage: activeTab === "library" ? "library" : activeTab === "profile" ? "profile" : "dashboard",
   }), [userProfile?.grade, activeTab]);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[var(--theme-bg)] flex items-center justify-center p-6">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto" />
+          <p className="mt-4 text-[var(--theme-text-secondary)]">Signing you in…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[var(--theme-bg)] flex items-center justify-center p-6">
+        <div className="max-w-md w-full rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-card-bg)] p-6 text-center">
+          <h1 className="text-xl font-semibold text-[var(--theme-text)]">Please sign in</h1>
+          <p className="mt-2 text-sm text-[var(--theme-text-secondary)]">
+            Your session isn’t active, so the dashboard can’t load yet.
+          </p>
+          <div className="mt-5 flex items-center justify-center gap-3">
+            <button
+              onClick={() => {
+                try {
+                  window.history.pushState({}, "", "/");
+                } catch {
+                  // noop
+                }
+                window.location.hash = "#login";
+              }}
+              className="rounded-lg bg-gradient-to-r from-purple-600 to-teal-500 px-4 py-2 text-sm font-semibold text-white"
+            >
+              Go to Login
+            </button>
+            <button
+              onClick={onLogout}
+              className="rounded-lg border border-[var(--theme-border)] px-4 py-2 text-sm font-semibold text-[var(--theme-text-secondary)]"
+            >
+              Back to Home
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[var(--theme-bg)]">
