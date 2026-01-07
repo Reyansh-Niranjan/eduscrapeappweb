@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Bot, Send, X, Loader2, Sparkles, Volume2, VolumeX } from 'lucide-react';
+import { Bot, Send, X, Loader2, Sparkles, Volume2, VolumeX, Mic, MicOff } from 'lucide-react';
 import { useAction } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import ReactMarkdown from 'react-markdown';
@@ -29,12 +29,38 @@ interface AIAssistantProps {
   onBookOpen?: (book: { path: string; name: string }) => void;
 }
 
+type BrowserSpeechRecognition = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  maxAlternatives: number;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+  onresult: ((event: any) => void) | null;
+  onerror: ((event: any) => void) | null;
+  onend: (() => void) | null;
+};
+
+function createSpeechRecognition(): BrowserSpeechRecognition | null {
+  const w = window as any;
+  const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
+  if (!Ctor) return null;
+  try {
+    return new Ctor();
+  } catch {
+    return null;
+  }
+}
+
 export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -66,8 +92,81 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
   useEffect(() => {
     if (!isOpen) {
       stopSpeaking();
+      try {
+        recognitionRef.current?.abort();
+      } catch {
+        // noop
+      }
+      recognitionRef.current = null;
+      setIsListening(false);
     }
   }, [isOpen]);
+
+  const toggleListening = () => {
+    if (typeof window === 'undefined') return;
+
+    // Stop if currently listening.
+    if (isListening) {
+      try {
+        recognitionRef.current?.stop();
+      } catch {
+        // noop
+      }
+      setIsListening(false);
+      return;
+    }
+
+    const recognition = createSpeechRecognition();
+    if (!recognition) {
+      // Browser doesn't support Web Speech API.
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content:
+            "Voice input isn't supported in this browser. Try Chrome/Edge on desktop, or type your message.",
+          timestamp: Date.now(),
+        },
+      ]);
+      return;
+    }
+
+    recognitionRef.current = recognition;
+    recognition.lang = 'en-US';
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = (event: any) => {
+      try {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const res = event.results[i];
+          const chunk = res?.[0]?.transcript ?? '';
+          transcript += chunk;
+        }
+        const cleaned = String(transcript).replace(/\s+/g, ' ').trim();
+        if (cleaned) setInput(cleaned);
+      } catch {
+        // ignore
+      }
+    };
+
+    recognition.onerror = () => {
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    try {
+      setIsListening(true);
+      recognition.start();
+    } catch {
+      setIsListening(false);
+    }
+  };
 
   // Send message via Convex
   const sendViaConvex = async (messageContent: string): Promise<ChatResult> => {
@@ -87,6 +186,15 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
+
+    if (isListening) {
+      try {
+        recognitionRef.current?.stop();
+      } catch {
+        // noop
+      }
+      setIsListening(false);
+    }
 
     const userMessage: Message = {
       role: 'user',
@@ -320,6 +428,16 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
                 disabled={isLoading}
                 className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
               />
+              <button
+                type="button"
+                onClick={toggleListening}
+                disabled={isLoading}
+                className="p-2 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label={isListening ? "Stop voice input" : "Start voice input"}
+                title={isListening ? "Stop voice input" : "Start voice input"}
+              >
+                {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+              </button>
               <button
                 onClick={handleSend}
                 disabled={!input.trim() || isLoading}
