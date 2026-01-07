@@ -73,6 +73,12 @@ The assistant is implemented as a **server-side Convex action** using OpenRouter
 - If tools are needed, the tool model calls `web_search`, `book_search`, and `open_chapter`
 - A writer model produces the final user-facing response **without** calling tools
 
+### 🔎 Deep Visual Search (New)
+
+- **Vision-powered book reading** - Streams ZIP-hosted PDFs from Firebase and sends the first pages to a **Gemini 2.0 Flash** vision model via OpenRouter
+- **Understands diagrams & text** - The AI returns summaries that combine visuals and text to answer questions about images, charts, and passages
+- **Fast and lightweight** - Processing runs in a Convex action without heavy PDF parsing libraries
+
 ### 👤 User Profiles & Personalization
 
 - **Role-Based Access** - Different experiences for Students, Teachers, and Administrators
@@ -154,6 +160,7 @@ For administrators and content managers:
 ### External Services
 - **Firebase Hosting** - Educational content delivery (https://eduscrape-host.web.app)
 - **OpenRouter API** - AI chatbot with tool-calling + writer model flow (configurable)
+- **Gemini 2.0 Flash (OpenRouter)** - Multimodal vision model for Deep Visual Search
 
 ---
 
