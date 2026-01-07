@@ -44,7 +44,11 @@ Required if you want Google/GitHub sign-in:
 | `CONVEX_GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
 | `CONVEX_GITHUB_CLIENT_ID` | GitHub OAuth client ID |
 | `CONVEX_GITHUB_CLIENT_SECRET` | GitHub OAuth client secret |
-| `SITE_URL` | Deployed site URL (e.g. `https://your-app.vercel.app`) |
+| `CONVEX_SITE_URL` | Deployed site URL (e.g. `https://your-app.vercel.app`) |
+
+Notes:
+- `CONVEX_SITE_URL` is preferred.
+- `SITE_URL` is also accepted for backwards compatibility.
 
 ### 3.2 OpenRouter (AI Assistant)
 

@@ -6,8 +6,8 @@ import { query } from "./_generated/server";
 
 const providers: AuthProviderConfig[] = [Password];
 
-if (process.env.CONVEX_SITE_URL === undefined) {
-  console.error("Missing CONVEX_SITE_URL environment variable");
+if ((process.env.CONVEX_SITE_URL ?? process.env.SITE_URL) === undefined) {
+  console.error("Missing CONVEX_SITE_URL (or SITE_URL) environment variable");
   // Throwing might break deployment if not careful, but for auth to work it is critical.
   // However, let's just log loudly for now or throw if we are sure.
 }

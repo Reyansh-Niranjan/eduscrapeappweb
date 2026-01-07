@@ -1,8 +1,9 @@
-
-const siteUrl = process.env.CONVEX_SITE_URL;
+const siteUrl = process.env.CONVEX_SITE_URL ?? process.env.SITE_URL;
 
 if (!siteUrl) {
-  throw new Error("Missing CONVEX_SITE_URL environment variable. Please set it in your Convex Dashboard.");
+  throw new Error(
+    "Missing site URL environment variable. Set CONVEX_SITE_URL (preferred) or SITE_URL in your Convex Dashboard (e.g. https://your-app.vercel.app)."
+  );
 }
 
 export default {
