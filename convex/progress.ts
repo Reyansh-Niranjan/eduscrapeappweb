@@ -158,7 +158,16 @@ export const getUserProgress = query({
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) {
-      throw new Error("Not authenticated");
+      return {
+        totalXP: 0,
+        booksCompleted: 0,
+        chaptersCompleted: 0,
+        quizzesPassed: 0,
+        currentStreak: 0,
+        longestStreak: 0,
+        lastActivity: 0,
+        completionPercentage: 0,
+      };
     }
 
     const userProfile = await ctx.db
@@ -529,7 +538,9 @@ export const getChaptersPerMonth = query({
   }),
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    if (!userId) {
+      return { points: [] };
+    }
 
     const months = Math.max(3, Math.min(24, Math.floor(args.months ?? 6)));
     const now = new Date();
