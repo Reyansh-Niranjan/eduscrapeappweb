@@ -26,14 +26,22 @@ export default function ProfileCompletionBanner() {
   const needsProfile = useMemo(() => {
     if (!user) return false;
     if (!profile) return true;
-    return profile.name.trim().length === 0 || profile.role.trim().length === 0;
+
+    const name = (profile.name ?? "").trim();
+    const role = (profile.role ?? "").trim();
+
+    return name.length === 0 || role.length === 0;
   }, [user, profile]);
 
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     if (profile) {
-      setForm({ name: profile.name, role: profile.role || "student", grade: profile.grade || "" });
+      setForm({
+        name: profile.name ?? "",
+        role: profile.role ?? "student",
+        grade: profile.grade ?? "",
+      });
       setExpanded(false);
     }
   }, [profile]);
