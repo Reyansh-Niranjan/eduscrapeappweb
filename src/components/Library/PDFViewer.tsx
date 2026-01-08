@@ -29,6 +29,15 @@ interface PDFViewerProps {
   onGenerateQuiz?: (chapterId: string) => Promise<void>;
 }
 
+const PDF_OPTIONS = {
+  isEvalSupported: false,
+  useSystemFonts: true,
+  // WASM configuration for JPEG2000 image support
+  wasmUrl: '/pdfjs-wasm/',
+  // Standard fonts for better PDF rendering
+  standardFontDataUrl: '/standard_fonts/',
+};
+
 export default function PDFViewer({
   pdf,
   pageNumber,
@@ -66,6 +75,10 @@ export default function PDFViewer({
   const startChapterTextJob = useAction(api.chapterText.startChapterTextJob);
   const jobStatus = useQuery(
     api.chapterTextJobs.getJobStatusByChapter,
+    chapterId ? { chapterId: chapterId as Id<"chapters"> } : "skip"
+  );
+  const noteStatus = useQuery(
+    (api as any).notes.getNoteStatus,
     chapterId ? { chapterId: chapterId as Id<"chapters"> } : "skip"
   );
   const [pageExtractionInFlight, setPageExtractionInFlight] = useState(false);
@@ -134,6 +147,26 @@ export default function PDFViewer({
     }
   }, [chapterId, jobStatus]);
 
+  useEffect(() => {
+    if (!chapterId || !noteStatus) return;
+
+    // Only toast once per chapter session when it transition to generating
+    const key = `note-toast-${chapterId}`;
+    if (noteStatus.status === "generating_pages" && !sessionStorage.getItem(key)) {
+      sessionStorage.setItem(key, "true");
+      toast.info("AI Study Notes are being generated...", {
+        description: "You'll be notified when they're ready to view in the Notes tab."
+      });
+    }
+
+    if (noteStatus.status === "completed" && sessionStorage.getItem(key) === "true") {
+      sessionStorage.setItem(key, "completed");
+      toast.success("AI Study Notes are ready!", {
+        description: "Head over to the Notes tab to check them out."
+      });
+    }
+  }, [chapterId, noteStatus]);
+
   const pickNextUnextractedPage = (startAt: number, totalPages: number): number | null => {
     for (let p = Math.max(1, startAt); p <= totalPages; p++) {
       if (!extractedPagesRef.current.has(p)) return p;
@@ -153,11 +186,29 @@ export default function PDFViewer({
       setPageExtractionInFlight(true);
       extractedPagesRef.current.add(pageNumber);
 
-      const imageDataUrl = canvas.toDataURL("image/jpeg", 0.75);
+      // Downscale to a reasonable size if it's too large (saves bandwidth/convex limits)
+      let finalDataUrl = "";
+      const MAX_DIM = 1200;
+      if (canvas.width > MAX_DIM || canvas.height > MAX_DIM) {
+        const scale = Math.min(MAX_DIM / canvas.width, MAX_DIM / canvas.height);
+        const offscreen = document.createElement("canvas");
+        offscreen.width = canvas.width * scale;
+        offscreen.height = canvas.height * scale;
+        const ctx = offscreen.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(canvas, 0, 0, offscreen.width, offscreen.height);
+          finalDataUrl = offscreen.toDataURL("image/jpeg", 0.7);
+        } else {
+          finalDataUrl = canvas.toDataURL("image/jpeg", 0.7);
+        }
+      } else {
+        finalDataUrl = canvas.toDataURL("image/jpeg", 0.7);
+      }
+
       const result = await extractChapterPageText({
         chapterId: chapterId as Id<"chapters">,
         pageNumber,
-        imageDataUrl,
+        imageDataUrl: finalDataUrl,
       });
 
       if (!result?.ok) {
@@ -238,15 +289,6 @@ export default function PDFViewer({
     })();
   }, [chapterId, hasQuiz, numPages, pageNumber, chapterCompletionAttempted, viewerOpenedAt, markChapterCompleted]);
 
-  const options = useMemo(() => ({
-    isEvalSupported: false,
-    useSystemFonts: true,
-    // WASM configuration for JPEG2000 image support
-    wasmUrl: '/pdfjs-wasm/',
-    // Standard fonts for better PDF rendering
-    standardFontDataUrl: '/standard_fonts/',
-  }), []);
-
   return (
     <div className="fixed inset-0 z-50 bg-black/90 flex flex-col">
       <div className="flex items-center justify-between p-4 bg-gray-900 text-white gap-3 flex-wrap">
@@ -260,6 +302,13 @@ export default function PDFViewer({
             {chapterId && jobStatus && (
               <span className="text-gray-300">
                 | Extraction: <span className="font-medium text-white">{jobStatus.status}</span>
+              </span>
+            )}
+            {chapterId && noteStatus && noteStatus.status !== "completed" && noteStatus.status !== "waiting_for_text" && (
+              <span className="text-gray-300 flex items-center gap-1">
+                | Notes: <span className="font-medium text-purple-400 animate-pulse capitalize">
+                  {noteStatus.status.replace("_", " ")} {noteStatus.progress !== undefined ? `(${noteStatus.progress}%)` : ""}
+                </span>
               </span>
             )}
           </div>
@@ -312,7 +361,7 @@ export default function PDFViewer({
           <Document
             key={pdf.url}
             file={pdf.url}
-            options={options}
+            options={PDF_OPTIONS}
             onLoadSuccess={({ numPages: loadedPages }) => {
               debug("onLoadSuccess", { loadedPages });
               onLoadSuccess(loadedPages);

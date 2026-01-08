@@ -1,10 +1,10 @@
 import { action, internalQuery, internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 
-const VISION_MODEL = "qwen/qwen-2.5-vl-7b-instruct:free";
-const FALLBACK_VISION_MODEL = "nvidia/nemotron-nano-12b-v2-vl:free";
+const VISION_MODEL = "nvidia/nemotron-nano-12b-v2-vl:free";
+const FALLBACK_VISION_MODEL = "qwen/qwen-2.5-vl-7b-instruct:free";
 
 function getVisionModels(): string[] {
   const raw = process.env.OPENROUTER_VISION_MODELS;
@@ -14,7 +14,11 @@ function getVisionModels(): string[] {
     ? raw.split(/[\n,]/g)
     : envSingle
       ? [envSingle]
-      : [VISION_MODEL, FALLBACK_VISION_MODEL])
+      : [
+        VISION_MODEL,
+        FALLBACK_VISION_MODEL,
+        "google/gemini-2.0-flash-exp:free",
+      ])
     .map((s) => s.trim())
     .filter(Boolean);
 
@@ -70,8 +74,10 @@ async function openRouterChatSafe(args: {
       // Retry transient upstream/provider failures.
       const retryableStatuses = new Set([429, 500, 502, 503, 504]);
       if (retryableStatuses.has(response.status) && attempt < maxAttempts) {
-        // Exponential backoff with a small cap.
-        const backoffMs = Math.min(2500, 300 * Math.pow(2, attempt - 1));
+        // High backoff for rate limits, smaller for others
+        const backoffMs = response.status === 429
+          ? Math.min(10000, 2000 * Math.pow(2, attempt - 1))
+          : Math.min(2500, 300 * Math.pow(2, attempt - 1));
         await sleep(backoffMs);
         continue;
       }
@@ -223,6 +229,15 @@ export const upsertChapterPageTextInternal = internalMutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    // Schedule note generation for this page
+    await ctx.scheduler.runAfter(0, (internal as any).notes.generatePageNotes, {
+      chapterId: args.chapterId,
+      pageNumber: args.pageNumber,
+      content: args.content,
+      userId: args.userId,
+    });
+
     return null;
   },
 });
@@ -340,6 +355,58 @@ export const startChapterTextJob = action({
       delayMs: 0,
     });
 
+    // Also trigger note sync in case text already exists
+    await ctx.scheduler.runAfter(0, (api as any).notes.syncNotesForChapter, {
+      chapterId: args.chapterId,
+    });
+
     return { ok: true };
+  },
+});
+
+export const resetChapterExtraction = internalMutation({
+  args: { chapterId: v.id("chapters") },
+  handler: async (ctx, args) => {
+    // Delete all text
+    const texts = await ctx.db
+      .query("chapterPageTexts")
+      .withIndex("by_chapter", (q) => q.eq("chapterId", args.chapterId))
+      .collect();
+    for (const t of texts) await ctx.db.delete(t._id);
+
+    // Delete all page notes
+    const pageNotes = await ctx.db
+      .query("chapterPageNotes")
+      .withIndex("by_chapter", (q) => q.eq("chapterId", args.chapterId))
+      .collect();
+    for (const n of pageNotes) await ctx.db.delete(n._id);
+
+    // Delete chapter notes
+    const chapterNotes = await ctx.db
+      .query("chapterNotes")
+      .withIndex("by_chapter", (q) => q.eq("chapterId", args.chapterId))
+      .collect();
+    for (const n of chapterNotes) await ctx.db.delete(n._id);
+
+    // Delete jobs
+    const jobs = await ctx.db
+      .query("chapterTextJobs")
+      .withIndex("by_chapter", (q) => q.eq("chapterId", args.chapterId))
+      .collect();
+    for (const j of jobs) await ctx.db.delete(j._id);
+  },
+});
+
+export const updateChapterTitleInternal = internalMutation({
+  args: { chapterId: v.id("chapters"), title: v.string() },
+  handler: async (ctx, args) => {
+    const chapter = await ctx.db.get(args.chapterId);
+    if (!chapter) return;
+    // Only update if not already set or if it looks like a filename
+    const current = chapter.identifiedTitle;
+    const looksLikeFile = !current || current.toLowerCase().endsWith(".pdf");
+    if (looksLikeFile) {
+      await ctx.db.patch(args.chapterId, { identifiedTitle: args.title });
+    }
   },
 });

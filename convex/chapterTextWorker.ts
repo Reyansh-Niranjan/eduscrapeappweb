@@ -5,8 +5,8 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { PNG } from "pngjs";
 
-const DEFAULT_VISION_MODEL = "qwen/qwen-2.5-vl-7b-instruct:free";
-const FALLBACK_VISION_MODEL = "nvidia/nemotron-nano-12b-v2-vl:free";
+const DEFAULT_VISION_MODEL = "nvidia/nemotron-nano-12b-v2-vl:free";
+const FALLBACK_VISION_MODEL = "qwen/qwen-2.5-vl-7b-instruct:free";
 
 function getVisionModels(): string[] {
   const raw = process.env.OPENROUTER_VISION_MODELS;
@@ -16,7 +16,11 @@ function getVisionModels(): string[] {
     ? raw.split(/[\n,]/g)
     : envSingle
       ? [envSingle]
-      : [DEFAULT_VISION_MODEL, FALLBACK_VISION_MODEL])
+      : [
+        DEFAULT_VISION_MODEL,
+        FALLBACK_VISION_MODEL,
+        "google/gemini-2.0-flash-exp:free",
+      ])
     .map((s) => s.trim())
     .filter(Boolean);
 
@@ -113,7 +117,10 @@ async function openRouterChatSafe(args: {
 
       const retryableStatuses = new Set([429, 500, 502, 503, 504]);
       if (retryableStatuses.has(response.status) && attempt < maxAttempts) {
-        await sleep(Math.min(2500, 300 * Math.pow(2, attempt - 1)));
+        const backoffMs = response.status === 429
+          ? Math.min(10000, 2000 * Math.pow(2, attempt - 1))
+          : Math.min(2500, 300 * Math.pow(2, attempt - 1));
+        await sleep(backoffMs);
         continue;
       }
 

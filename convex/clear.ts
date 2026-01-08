@@ -11,6 +11,18 @@ export const clearData = mutation({
             "teamMembers",
             "chatMessages",
             "userProfiles",
+            "books",
+            "chapters",
+            "userProgress",
+            "chapterProgress",
+            "chapterPageTexts",
+            "chapterPageNotes",
+            "chapterNotes",
+            "chapterTextJobs",
+            "quizzes",
+            "quizQuestions",
+            "quizAttempts",
+            "quizAnswers",
             ...authTableNames
         ];
 

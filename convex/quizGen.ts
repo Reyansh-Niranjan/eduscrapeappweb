@@ -222,29 +222,49 @@ async function openRouterChat(args: {
   temperature?: number;
   responseFormat?: any;
 }): Promise<any> {
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${args.apiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": "https://eduscrapeapp.com",
-      "X-Title": "EduScrapeApp",
-    },
-    body: JSON.stringify({
-      model: args.model,
-      messages: args.messages,
-      // Ask for strict JSON (or JSON Schema) when the provider/model supports it.
-      response_format: args.responseFormat ?? { type: "json_object" },
-      max_tokens: args.maxTokens ?? 1200,
-      temperature: args.temperature ?? 0.2,
-    }),
-  });
+  const maxAttempts = 3;
+  let lastError: any;
 
-  const textBody = await response.text();
-  if (!response.ok) {
-    throw new Error(`OpenRouter API error: ${response.status} ${response.statusText} ${textBody}`);
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${args.apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://eduscrapeapp.com",
+          "X-Title": "EduScrapeApp",
+        },
+        body: JSON.stringify({
+          model: args.model,
+          messages: args.messages,
+          response_format: args.responseFormat ?? { type: "json_object" },
+          max_tokens: args.maxTokens ?? 1200,
+          temperature: args.temperature ?? 0.2,
+        }),
+      });
+
+      const textBody = await response.text();
+      if (!response.ok) {
+        const errorText = `OpenRouter API error: ${response.status} ${response.statusText} ${textBody}`;
+        lastError = new Error(errorText);
+
+        if (response.status === 429) {
+          const delay = Math.pow(2, attempt) * 1000;
+          await new Promise(r => setTimeout(r, delay));
+          continue;
+        }
+        throw lastError;
+      }
+      return JSON.parse(textBody);
+    } catch (e) {
+      lastError = e;
+      if (attempt < maxAttempts) {
+        await new Promise(r => setTimeout(r, 1000 * attempt));
+      }
+    }
   }
-  return JSON.parse(textBody);
+  throw lastError ?? new Error("Failed after max attempts");
 }
 
 export const generateQuizForChapter = action({
@@ -399,12 +419,9 @@ ${clampText(pageText, 3500)}`;
       short_answer: candidates.filter((c) => c.type === "short_answer"),
     };
 
-    if (
-      byType.multiple_choice.length < targets.multiple_choice ||
-      byType.true_false.length < targets.true_false ||
-      byType.short_answer.length < targets.short_answer
-    ) {
-      throw new Error("Quiz generation failed: not enough page-by-page questions generated yet");
+    const totalGenerated = byType.multiple_choice.length + byType.true_false.length + byType.short_answer.length;
+    if (totalGenerated < 5) {
+      throw new Error(`Quiz generation failed: only ${totalGenerated} questions were generated, which is not enough for a quiz. High API load or complex text might be the cause.`);
     }
 
     const fixedQuestions = (
@@ -427,13 +444,13 @@ ${clampText(pageText, 3500)}`;
     const created: { quizId: Id<"quizzes"> } = await ctx.runMutation(
       internal.quizzes.createGeneratedQuizInternal,
       {
-      chapterId: args.chapterId,
-      title: String(chapter.identifiedTitle ?? basename(chapter.pdfPath)).slice(0, 120),
-      description: "Generated quiz (page-by-page)",
-      passingScore: 70,
-      timeLimit: undefined,
-      maxAttempts: undefined,
-      questions: fixedQuestions,
+        chapterId: args.chapterId,
+        title: String(chapter.identifiedTitle ?? basename(chapter.pdfPath)).slice(0, 120),
+        description: "Generated quiz (page-by-page)",
+        passingScore: 70,
+        timeLimit: undefined,
+        maxAttempts: undefined,
+        questions: fixedQuestions,
       }
     );
 

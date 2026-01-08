@@ -19,6 +19,7 @@ import {
   User,
   Mail,
   GraduationCap,
+  FileText,
 } from "lucide-react";
 import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -28,6 +29,7 @@ import { toast } from "sonner";
 
 const Library = lazy(() => import("./Library"));
 const ProfileEdit = lazy(() => import("./ProfileEdit"));
+const Notes = lazy(() => import("./Notes"));
 
 function SectionLoader({ label }: { label: string }) {
   return (
@@ -51,9 +53,6 @@ const DashboardOverview = memo(
     userRole,
     grade,
     userProgress,
-    onBrowseLibrary,
-    onViewProgress,
-    onStartSession,
   }: {
     userName?: string;
     userRole?: string;
@@ -68,9 +67,6 @@ const DashboardOverview = memo(
       lastActivity: number;
       completionPercentage: number;
     };
-    onBrowseLibrary?: () => void;
-    onViewProgress?: () => void;
-    onStartSession?: () => void;
   }) => {
     const role = (userRole || "student").toLowerCase();
     const isAdmin = role.includes("admin");
@@ -119,22 +115,6 @@ const DashboardOverview = memo(
       };
     }, [chaptersPerMonth]);
 
-    const lastActivityText = (() => {
-      const ts = userProgress?.lastActivity;
-      if (!ts || ts <= 0) return "No recent activity yet.";
-      try {
-        return `Last activity: ${new Date(ts).toLocaleString()}`;
-      } catch {
-        return "Last activity recorded.";
-      }
-    })();
-
-    const streakText = (() => {
-      const streak = userProgress?.currentStreak;
-      if (typeof streak !== "number") return "Start studying to build a streak.";
-      if (streak <= 0) return "Start a streak by studying today.";
-      return `Keep your ${streak}-day learning streak alive!`;
-    })();
 
     return (
       <motion.div
@@ -402,93 +382,6 @@ const DashboardOverview = memo(
             )}
           </motion.section>
 
-          <motion.section
-            className="grid gap-6 lg:grid-cols-3"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-          >
-            <motion.div
-              className="card hover-lift p-6 bg-[var(--theme-card-bg)] border border-[var(--theme-border)]"
-              whileHover={{ y: -5, scale: 1.02 }}
-              transition={{ duration: 0.2 }}
-            >
-              <h2 className="text-lg font-semibold mb-3 text-[var(--theme-text)]">Quick Actions</h2>
-              <p className="text-sm mb-4 text-[var(--theme-text-secondary)]">
-                Access your favorite resources and continue learning.
-              </p>
-              <motion.button
-                onClick={onBrowseLibrary}
-                className="w-full bg-purple-500 text-white py-2 px-4 rounded-lg font-medium hover:bg-purple-600 transition-colors"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                Browse Library
-              </motion.button>
-            </motion.div>
-
-            <motion.div
-              className="card hover-lift p-6 bg-[var(--theme-card-bg)] border border-[var(--theme-border)]"
-              whileHover={{ y: -5, scale: 1.02 }}
-              transition={{ duration: 0.2 }}
-            >
-              <h2 className="text-lg font-semibold mb-3 text-[var(--theme-text)]">Recent Activity</h2>
-              <p className="text-sm mb-4 text-[var(--theme-text-secondary)]">
-                {lastActivityText}
-              </p>
-              <motion.button
-                onClick={onViewProgress}
-                className="w-full bg-teal-500 text-white py-2 px-4 rounded-lg font-medium hover:bg-teal-600 transition-colors"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                View Progress
-              </motion.button>
-            </motion.div>
-
-            <motion.div
-              className="card hover-lift p-6 bg-[var(--theme-card-bg)] border border-[var(--theme-border)]"
-              whileHover={{ y: -5, scale: 1.02 }}
-              transition={{ duration: 0.2 }}
-            >
-              <h2 className="text-lg font-semibold mb-3 text-[var(--theme-text)]">Study Streak</h2>
-              <p className="text-sm mb-4 text-[var(--theme-text-secondary)]">
-                {streakText}
-              </p>
-              <motion.button
-                onClick={onStartSession}
-                className="w-full bg-yellow-500 text-white py-2 px-4 rounded-lg font-medium hover:bg-yellow-600 transition-colors"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                Start Session
-              </motion.button>
-            </motion.div>
-          </motion.section>
-
-          <motion.section
-            className="card p-6 bg-[var(--theme-card-bg)] border border-[var(--theme-border)]"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.7 }}
-            whileHover={{ y: -2 }}
-          >
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-[var(--theme-text)]">Learning Path</h2>
-                <p className="text-sm text-[var(--theme-text-secondary)]">
-                  Continue your personalized learning journey with curated content and challenges.
-                </p>
-              </div>
-              <motion.span
-                className="inline-flex items-center rounded-full bg-gradient-to-r from-purple-500 to-teal-500 px-4 py-2 text-sm font-semibold text-white"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                Explore Now
-              </motion.span>
-            </div>
-          </motion.section>
         </div>
       </motion.div>
     );
@@ -499,7 +392,7 @@ DashboardOverview.displayName = "DashboardOverview";
 const Quiz = lazy(() => import("./Quiz"));
 
 export default function Dashboard({ onLogout }: DashboardProps) {
-  const [activeTab, setActiveTab] = useState<"overview" | "library" | "profile" | "quiz">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "library" | "profile" | "quiz" | "notes">("overview");
   const [bookToNavigate, setBookToNavigate] = useState<{ path: string; name: string } | null>(null);
   const [currentQuiz, setCurrentQuiz] = useState<{ quizId: Id<"quizzes"> } | null>(null);
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
@@ -600,6 +493,16 @@ export default function Dashboard({ onLogout }: DashboardProps) {
               <BookOpen className="h-5 w-5" />
               <span className="font-medium">Library</span>
             </button>
+            <button
+              onClick={() => setActiveTab("notes")}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${activeTab === "notes"
+                ? "bg-purple-600 text-white shadow-lg shadow-purple-500/20"
+                : "text-[var(--theme-text-secondary)] hover:bg-[var(--theme-bg-secondary)] hover:text-[var(--theme-text)]"
+                }`}
+            >
+              <FileText className="h-5 w-5" />
+              <span className="font-medium">Notes</span>
+            </button>
           </nav>
         </div>
 
@@ -676,6 +579,19 @@ export default function Dashboard({ onLogout }: DashboardProps) {
                 <Library bookToOpen={bookToNavigate} onStartQuiz={handleStartQuiz} />
               </Suspense>
             </ErrorBoundary>
+          ) : activeTab === "notes" ? (
+            <ErrorBoundary fallback={
+              <div className="flex items-center justify-center min-h-[400px]">
+                <div className="text-center">
+                  <p className="text-red-600 font-semibold">Failed to load notes</p>
+                  <button onClick={() => setActiveTab("overview")} className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg">Back to Home</button>
+                </div>
+              </div>
+            }>
+              <Suspense fallback={<SectionLoader label="notes" />}>
+                <Notes />
+              </Suspense>
+            </ErrorBoundary>
           ) : activeTab === "profile" ? (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
               <motion.div
@@ -705,9 +621,6 @@ export default function Dashboard({ onLogout }: DashboardProps) {
                 userRole={userProfile?.role}
                 grade={userProfile?.grade}
                 userProgress={userProgress}
-                onBrowseLibrary={() => setActiveTab("library")}
-                onViewProgress={() => setActiveTab("profile")}
-                onStartSession={() => setActiveTab("library")}
               />
             </>
           )}

@@ -120,7 +120,32 @@ const applicationTables = {
     updatedAt: v.number(),
   })
     .index("by_chapter", ["chapterId"])
+    .index("by_chapter_page", ["chapterId", "pageNumber"])
+    .index("by_user", ["userId"]),
+
+  // Per-page generated notes.
+  chapterPageNotes: defineTable({
+    chapterId: v.id("chapters"),
+    pageNumber: v.number(),
+    notes: v.string(),
+    userId: v.id("users"),
+    model: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_chapter", ["chapterId"])
     .index("by_chapter_page", ["chapterId", "pageNumber"]),
+
+  // Final combined notes for the entire chapter.
+  chapterNotes: defineTable({
+    chapterId: v.id("chapters"),
+    content: v.string(), // The full markdown notes
+    userId: v.id("users"),
+    model: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_chapter", ["chapterId"])
+    .index("by_user", ["userId"]),
 
   // Background extraction job state so extraction continues server-side.
   chapterTextJobs: defineTable({

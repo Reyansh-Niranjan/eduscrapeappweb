@@ -127,12 +127,22 @@ export const setJobCompletedInternal = internalMutation({
   args: { jobId: v.id("chapterTextJobs") },
   handler: async (ctx, args) => {
     const now = Date.now();
+    const job = await ctx.db.get(args.jobId);
+
     await ctx.db.patch(args.jobId, {
       status: "completed",
       completedAt: now,
       updatedAt: now,
       lastError: undefined,
     });
+
+    if (job) {
+      // Schedule combining all page notes into a final chapter summary
+      await ctx.scheduler.runAfter(0, (internal as any).notes.combineChapterNotes, {
+        chapterId: job.chapterId,
+        userId: job.userId,
+      });
+    }
   },
 });
 
