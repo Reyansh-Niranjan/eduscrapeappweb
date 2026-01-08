@@ -11,6 +11,7 @@ export default function ThemeToggle() {
         const shouldBeDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
         setIsDark(shouldBeDark);
         document.documentElement.setAttribute('data-theme', shouldBeDark ? 'dark' : 'light');
+        document.documentElement.classList.toggle('dark', shouldBeDark);
     }, []);
 
     const toggleTheme = () => {
@@ -19,6 +20,7 @@ export default function ThemeToggle() {
 
         const themeValue = newTheme ? 'dark' : 'light';
         document.documentElement.setAttribute('data-theme', themeValue);
+        document.documentElement.classList.toggle('dark', newTheme);
         localStorage.setItem('theme', themeValue);
     };
 

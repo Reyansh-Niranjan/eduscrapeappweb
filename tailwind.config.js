@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class',
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
@@ -66,7 +67,7 @@ export default {
   },
   plugins: [
     // Custom utilities for solid colors
-    function({ addUtilities }) {
+    function ({ addUtilities }) {
       addUtilities({
         '.solid-card': {
           background: 'var(--theme-card-bg)',

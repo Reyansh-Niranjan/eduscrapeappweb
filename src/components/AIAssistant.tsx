@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { Bot, Send, X, Loader2, Sparkles, Volume2, VolumeX, Mic, MicOff } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Bot, Send, X, Loader2, Sparkles } from 'lucide-react';
 import { useAction } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { speakText, stopSpeaking } from '../lib/voice';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -29,49 +29,21 @@ interface AIAssistantProps {
   onBookOpen?: (book: { path: string; name: string }) => void;
 }
 
-type BrowserSpeechRecognition = {
-  lang: string;
-  continuous: boolean;
-  interimResults: boolean;
-  maxAlternatives: number;
-  start: () => void;
-  stop: () => void;
-  abort: () => void;
-  onresult: ((event: any) => void) | null;
-  onerror: ((event: any) => void) | null;
-  onend: (() => void) | null;
-};
-
-function createSpeechRecognition(): BrowserSpeechRecognition | null {
-  const w = window as any;
-  const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
-  if (!Ctor) return null;
-  try {
-    return new Ctor();
-  } catch {
-    return null;
-  }
-}
-
 export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [voiceEnabled, setVoiceEnabled] = useState(true);
-  const [isListening, setIsListening] = useState(false);
-  const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Convex action (OpenRouter-backed)
   const sendMessageAction = useAction(api.chatbot.sendChatMessage);
-  
+
   // Session ID
-  // Use crypto.randomUUID if available for better security
   const convexSessionId = useRef(
-    typeof crypto !== 'undefined' && crypto.randomUUID 
-      ? `ai_${crypto.randomUUID()}` 
+    typeof crypto !== 'undefined' && crypto.randomUUID
+      ? `ai_${crypto.randomUUID()}`
       : `ai_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
   );
 
@@ -89,86 +61,6 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
     }
   }, [isOpen]);
 
-  useEffect(() => {
-    if (!isOpen) {
-      stopSpeaking();
-      try {
-        recognitionRef.current?.abort();
-      } catch {
-        // noop
-      }
-      recognitionRef.current = null;
-      setIsListening(false);
-    }
-  }, [isOpen]);
-
-  const toggleListening = () => {
-    if (typeof window === 'undefined') return;
-
-    // Stop if currently listening.
-    if (isListening) {
-      try {
-        recognitionRef.current?.stop();
-      } catch {
-        // noop
-      }
-      setIsListening(false);
-      return;
-    }
-
-    const recognition = createSpeechRecognition();
-    if (!recognition) {
-      // Browser doesn't support Web Speech API.
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          content:
-            "Voice input isn't supported in this browser. Try Chrome/Edge on desktop, or type your message.",
-          timestamp: Date.now(),
-        },
-      ]);
-      return;
-    }
-
-    recognitionRef.current = recognition;
-    recognition.lang = 'en-US';
-    recognition.continuous = false;
-    recognition.interimResults = true;
-    recognition.maxAlternatives = 1;
-
-    recognition.onresult = (event: any) => {
-      try {
-        let transcript = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const res = event.results[i];
-          const chunk = res?.[0]?.transcript ?? '';
-          transcript += chunk;
-        }
-        const cleaned = String(transcript).replace(/\s+/g, ' ').trim();
-        if (cleaned) setInput(cleaned);
-      } catch {
-        // ignore
-      }
-    };
-
-    recognition.onerror = () => {
-      setIsListening(false);
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-    };
-
-    try {
-      setIsListening(true);
-      recognition.start();
-    } catch {
-      setIsListening(false);
-    }
-  };
-
-  // Send message via Convex
   const sendViaConvex = async (messageContent: string): Promise<ChatResult> => {
     const result = await sendMessageAction({
       sessionId: convexSessionId.current,
@@ -186,15 +78,6 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
-
-    if (isListening) {
-      try {
-        recognitionRef.current?.stop();
-      } catch {
-        // noop
-      }
-      setIsListening(false);
-    }
 
     const userMessage: Message = {
       role: 'user',
@@ -217,11 +100,6 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
         };
         setMessages(prev => [...prev, assistantMessage]);
 
-        if (voiceEnabled) {
-          void speakText(result.response);
-        }
-
-        // Handle book opening (available from Convex backend)
         if (result.bookToOpen && onBookOpen) {
           onBookOpen(result.bookToOpen);
         }
@@ -255,7 +133,6 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
 
   return (
     <>
-      {/* Floating Button */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
@@ -266,10 +143,8 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
         </button>
       )}
 
-      {/* Chat Panel */}
       {isOpen && (
         <div className="fixed bottom-6 right-6 z-50 flex flex-col w-96 h-[600px] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-          {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-purple-600 to-teal-500 text-white">
             <div className="flex items-center gap-2">
               <div className="relative">
@@ -285,21 +160,6 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
             </div>
             <div className="flex items-center gap-2">
               <button
-                type="button"
-                onClick={() => {
-                  setVoiceEnabled((v) => {
-                    const next = !v;
-                    if (!next) stopSpeaking();
-                    return next;
-                  });
-                }}
-                className="p-1 hover:bg-white/20 rounded-lg transition"
-                aria-label={voiceEnabled ? "Disable voice" : "Enable voice"}
-                title={voiceEnabled ? "Disable voice" : "Enable voice"}
-              >
-                {voiceEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
-              </button>
-              <button
                 onClick={() => setIsOpen(false)}
                 className="p-1 hover:bg-white/20 rounded-lg transition"
                 aria-label="Close"
@@ -309,7 +169,6 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
             </div>
           </div>
 
-          {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-800">
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full text-center px-4">
@@ -345,11 +204,10 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
                 className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-2 ${
-                    msg.role === 'user'
-                      ? 'bg-gradient-to-r from-purple-600 to-teal-500 text-white'
-                      : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-600'
-                  }`}
+                  className={`max-w-[80%] rounded-2xl px-4 py-2 ${msg.role === 'user'
+                    ? 'bg-gradient-to-r from-purple-600 to-teal-500 text-white'
+                    : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-600'
+                    }`}
                 >
                   {msg.role === 'assistant' ? (
                     <div className="text-sm whitespace-pre-wrap">
@@ -415,7 +273,6 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input */}
           <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
             <div className="flex gap-2">
               <input
@@ -429,16 +286,6 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
                 className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <button
-                type="button"
-                onClick={toggleListening}
-                disabled={isLoading}
-                className="p-2 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                aria-label={isListening ? "Stop voice input" : "Start voice input"}
-                title={isListening ? "Stop voice input" : "Start voice input"}
-              >
-                {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-              </button>
-              <button
                 onClick={handleSend}
                 disabled={!input.trim() || isLoading}
                 className="p-2 bg-gradient-to-r from-purple-600 to-teal-500 text-white rounded-xl hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
@@ -447,6 +294,7 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
                 <Send className="h-5 w-5" />
               </button>
             </div>
+
             {userContext?.grade && (
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
                 Grade {userContext.grade} • {userContext.currentPage || 'Home'}
