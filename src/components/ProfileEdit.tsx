@@ -84,7 +84,7 @@ export default function ProfileEdit({ onCancel }: ProfileEditProps) {
   }
 
   return (
-    <div className="min-h-screen p-6" style={{ background: 'var(--theme-bg)' }}>
+    <div className="p-4 overflow-y-auto max-h-[80vh]">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="rounded-xl shadow-sm p-6 mb-6" style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}>
