@@ -1,14 +1,18 @@
 import { action, internalAction, internalMutation, internalQuery, query } from "./_generated/server";
 import { v } from "convex/values";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Id } from "./_generated/dataModel";
 
-const NOTES_MODEL = "mistralai/devstral-2512:free";
+const NOTES_MODELS = [
+    "mistralai/devstral-2512:free",
+    "nvidia/nemotron-3-nano-30b-a3b:free",
+    "meta-llama/llama-3.1-8b-instruct:free",
+];
 
 async function openRouterChat(args: {
     apiKey: string;
-    model: string;
+    models: string[];
     messages: Array<{ role: "system" | "user"; content: string }>;
     maxTokens?: number;
     temperature?: number;
@@ -18,6 +22,7 @@ async function openRouterChat(args: {
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
+            const isFallback = args.models.length > 1;
             const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                 method: "POST",
                 headers: {
@@ -27,7 +32,7 @@ async function openRouterChat(args: {
                     "X-Title": "EduScrapeApp",
                 },
                 body: JSON.stringify({
-                    model: args.model,
+                    ...(isFallback ? { models: args.models, route: "fallback" } : { model: args.models[0] }),
                     messages: args.messages,
                     max_tokens: args.maxTokens ?? 2000,
                     temperature: args.temperature ?? 0.3,
@@ -45,6 +50,7 @@ async function openRouterChat(args: {
                     await new Promise(r => setTimeout(r, delay));
                     continue;
                 }
+                console.error("[notes] OpenRouter call failed:", errorText);
                 throw lastError;
             }
             return JSON.parse(textBody);
@@ -87,10 +93,10 @@ Text Content:
 ${args.content}`;
 
         try {
-            console.log(`Generating notes for page ${args.pageNumber} using ${NOTES_MODEL}`);
+            console.log(`Generating notes for page ${args.pageNumber} using ${NOTES_MODELS[0]}`);
             const response = await openRouterChat({
                 apiKey,
-                model: NOTES_MODEL,
+                models: NOTES_MODELS,
                 messages: [
                     { role: "system", content: "You are a helpful education assistant that creates perfect study notes." },
                     { role: "user", content: prompt },
@@ -123,7 +129,7 @@ ${args.content}`;
                     pageNumber: args.pageNumber,
                     notes,
                     userId: args.userId,
-                    model: NOTES_MODEL,
+                    model: String(response?.model ?? NOTES_MODELS[0]),
                 });
             }
         } catch (e: any) {
@@ -151,14 +157,33 @@ export const combineChapterNotes = internalAction({
         const apiKey = process.env.OPENROUTER_API_KEY;
         if (!apiKey) return;
 
+        // 1. Get all page texts vs page notes to see if we are ready
+        const allPageTexts = await ctx.runQuery(internal.chapterText.getChapterPageTextsForQuiz, {
+            chapterId: args.chapterId,
+            maxPages: 2000,
+        });
         const allPageNotes = await ctx.runQuery((internal as any).notes.getAllPageNotesInternal, {
             chapterId: args.chapterId,
         });
 
-        if (!allPageNotes || allPageNotes.length === 0) return;
+        if (!allPageTexts || allPageTexts.pages.length === 0) return;
+
+        // If not all pages have notes yet, reschedule combination
+        if (allPageNotes.length < allPageTexts.pages.length) {
+            console.log(`[notes] Only ${allPageNotes.length}/${allPageTexts.pages.length} page notes ready for ${args.chapterId}. Rescheduling...`);
+            await ctx.scheduler.runAfter(10000, (internal as any).notes.combineChapterNotes, {
+                chapterId: args.chapterId,
+                userId: args.userId,
+            });
+            return;
+        }
 
         // Sort by page number
         allPageNotes.sort((a: any, b: any) => (a.pageNumber as number) - (b.pageNumber as number));
+
+        // Get chapter title from DB if available
+        const chapter = await ctx.runQuery(api.progress.getChapterWithBook, { chapterId: args.chapterId });
+        const dbTitle = chapter?.chapter?.identifiedTitle;
 
         const combinedText = allPageNotes.map((n: any) => `--- Page ${n.pageNumber} ---\n${n.notes}`).join("\n\n");
 
@@ -167,6 +192,7 @@ Your task is to combine these into a single, cohesive, and perfectly formatted s
 
 CRITICAL INSTRUCTIONS:
 1. Identify the ACTUAL CHAPTER TITLE from the content (e.g., "The Cell Cycle", not "chapter1.pdf").
+${dbTitle ? `NOTE: The system previously identified the title as "${dbTitle}". Use this if it seems accurate.` : ""}
 2. Start your response with exactly this format on the first line:
 TITLE: [The Identified Chapter Title]
 3. Then follow with a horizontal rule (---) and the full cohesive notes.
@@ -181,7 +207,7 @@ ${combinedText}`;
         try {
             const response = await openRouterChat({
                 apiKey,
-                model: NOTES_MODEL,
+                models: NOTES_MODELS,
                 messages: [
                     { role: "system", content: "You are an expert editor creating professional study guides. You always identify the real chapter title." },
                     { role: "user", content: prompt },
@@ -191,23 +217,21 @@ ${combinedText}`;
 
             let finalNotes = response?.choices?.[0]?.message?.content ?? "";
             if (finalNotes) {
-                // Extract title if present
                 let identifiedTitle = "";
                 if (finalNotes.startsWith("TITLE:")) {
                     const firstLineEnd = finalNotes.indexOf("\n");
                     const titleLine = finalNotes.slice(0, firstLineEnd).replace("TITLE:", "").trim();
                     identifiedTitle = titleLine;
-                    // Remove the title line and horizontal rule if exists from the displayed content
                     finalNotes = finalNotes.slice(firstLineEnd).trim();
                     if (finalNotes.startsWith("---")) {
                         finalNotes = finalNotes.replace(/^---/, "").trim();
                     }
                 }
 
-                if (identifiedTitle) {
+                if (identifiedTitle || dbTitle) {
                     await ctx.runMutation(internal.chapterText.updateChapterTitleInternal, {
                         chapterId: args.chapterId,
-                        title: identifiedTitle,
+                        title: identifiedTitle || dbTitle!,
                     });
                 }
 
@@ -215,7 +239,7 @@ ${combinedText}`;
                     chapterId: args.chapterId,
                     content: finalNotes,
                     userId: args.userId,
-                    model: NOTES_MODEL,
+                    model: String(response?.model ?? NOTES_MODELS[0]),
                 });
             }
         } catch (e) {

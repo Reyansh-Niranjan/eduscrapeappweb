@@ -19,7 +19,6 @@ function getVisionModels(): string[] {
       : [
         DEFAULT_VISION_MODEL,
         FALLBACK_VISION_MODEL,
-        "google/gemini-2.0-flash-exp:free",
       ])
     .map((s) => s.trim())
     .filter(Boolean);

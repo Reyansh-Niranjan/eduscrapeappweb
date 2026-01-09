@@ -139,6 +139,46 @@ export const createGeneratedQuizInternal = internalMutation({
   },
 });
 
+export const getQuizQuestionCountInternal = internalQuery({
+  args: { chapterId: v.id("chapters") },
+  handler: async (ctx, args) => {
+    const quiz = await ctx.db
+      .query("quizzes")
+      .withIndex("by_chapter", (q) => q.eq("chapterId", args.chapterId))
+      .unique();
+    if (!quiz) return 0;
+    const questions = await ctx.db
+      .query("quizQuestions")
+      .withIndex("by_quiz", (q) => q.eq("quizId", quiz._id))
+      .collect();
+    return questions.length;
+  },
+});
+
+export const deleteQuizInternal = internalMutation({
+  args: { chapterId: v.id("chapters") },
+  handler: async (ctx, args) => {
+    const quiz = await ctx.db
+      .query("quizzes")
+      .withIndex("by_chapter", (q) => q.eq("chapterId", args.chapterId))
+      .unique();
+    if (!quiz) return;
+
+    // Delete questions
+    const questions = await ctx.db
+      .query("quizQuestions")
+      .withIndex("by_quiz", (q) => q.eq("quizId", quiz._id))
+      .collect();
+    for (const q of questions) {
+      await ctx.db.delete(q._id);
+    }
+
+    // Delete attempts/answers? Maybe better to keep them, but if we are regenerating the whole quiz, we probably should clear them or they will refer to non-existent questions.
+    // However, if we just want to fix a broken gen, maybe just delete the quiz.
+    await ctx.db.delete(quiz._id);
+  },
+});
+
 // Start quiz attempt
 export const startQuizAttempt = mutation({
   args: { quizId: v.id("quizzes") },
@@ -294,9 +334,9 @@ export const submitQuizAnswer = mutation({
           const chapter = await ctx.db.get(quiz.chapterId);
           const book = chapter
             ? await ctx.db
-                .query("books")
-                .withIndex("by_path", (q) => q.eq("path", chapter.bookPath))
-                .unique()
+              .query("books")
+              .withIndex("by_path", (q) => q.eq("path", chapter.bookPath))
+              .unique()
             : null;
 
           const chapterContext = `${book?.subject || "Unknown"} - ${chapter?.grade || ""} - ${chapter?.identifiedTitle || "Chapter"}`;
