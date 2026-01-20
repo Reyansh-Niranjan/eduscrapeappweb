@@ -1,7 +1,7 @@
 # PDF Library Navigation Flow Documentation
 
 ## Overview
-The EduScrapeApp PDF Library provides a complete hierarchical navigation system that allows students to browse and access educational materials based on their grade level. The system is built on Firebase hosting and uses a structured approach to organize content.
+The EduScrapeApp PDF Library provides a complete hierarchical navigation system that allows students to browse and access educational materials based on their grade level. The system is built on Firebase hosting and uses a structured approach to organize content. The landing page now highlights AI-ready search, prep time savings, and secure citation tracking before users enter the library.
 
 ## Architecture
 
