@@ -1,14 +1,25 @@
-import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { Clock3, ShieldCheck, Sparkles } from 'lucide-react';
+import OptimizedLogo from './OptimizedLogo';
 
 export default function Hero() {
-  const [isVisible, setIsVisible] = useState(false);
-  const [logoLoaded, setLogoLoaded] = useState(false);
-  const [logoError, setLogoError] = useState(false);
-
-  useEffect(() => {
-    setIsVisible(true);
-  }, []);
+  const highlights = [
+    {
+      icon: Sparkles,
+      title: 'AI-Ready Content',
+      description: 'Surface the most relevant lessons in minutes with guided AI search.',
+    },
+    {
+      icon: Clock3,
+      title: 'Prep Time Savings',
+      description: 'Automate discovery so educators can focus on teaching instead of searching.',
+    },
+    {
+      icon: ShieldCheck,
+      title: 'Secure & Compliant',
+      description: 'Keep citations, sources, and updates tracked in a single trusted hub.',
+    },
+  ];
 
   return (
     <section id="home" className="relative min-h-screen flex items-center justify-center overflow-hidden" style={{ background: 'var(--theme-hero-bg)' }}>
@@ -25,22 +36,12 @@ export default function Hero() {
             transition={{ duration: 0.6, delay: 0.2 }}
           >
             <div className="w-32 h-32 rounded-2xl flex items-center justify-center shadow-2xl overflow-hidden border-2" style={{ background: 'var(--theme-card-bg)', borderColor: 'var(--theme-border)' }}>
-              {logoError ? (
-                <div className="w-full h-full flex items-center justify-center bg-purple-600 text-white font-bold text-2xl">
-                  CC
-                </div>
-              ) : (
-                <img
-                  src="https://i.imgur.com/r4W9l7n.png"
-                  alt="EduScrapeApp Logo"
-                  className="w-full h-full object-cover"
-                  width={128}
-                  height={128}
-                  onLoad={() => setLogoLoaded(true)}
-                  onError={() => setLogoError(true)}
-                  style={{ opacity: logoLoaded ? 1 : 0.7, transition: 'opacity 0.3s ease-in-out' }}
-                />
-              )}
+              <OptimizedLogo
+                src="/logo.svg"
+                alt="EduScrapeApp Logo"
+                className="w-full h-full object-cover"
+                fallbackText="EA"
+              />
             </div>
           </motion.div>
 
@@ -90,6 +91,35 @@ export default function Hero() {
             >
               See Outcomes
             </motion.button>
+          </motion.div>
+
+          <motion.div
+            className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 1 }}
+          >
+            {highlights.map((highlight) => (
+              <motion.div
+                key={highlight.title}
+                className="card text-left p-5 flex flex-col gap-3"
+                style={{ background: 'var(--theme-card-bg)', border: '1px solid var(--theme-border)' }}
+                whileHover={{ y: -4 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-600/10 text-purple-600">
+                    <highlight.icon className="h-5 w-5" />
+                  </span>
+                  <h3 className="text-lg font-semibold" style={{ color: 'var(--theme-text)' }}>
+                    {highlight.title}
+                  </h3>
+                </div>
+                <p className="text-sm leading-relaxed" style={{ color: 'var(--theme-text-secondary)' }}>
+                  {highlight.description}
+                </p>
+              </motion.div>
+            ))}
           </motion.div>
         </div>
 

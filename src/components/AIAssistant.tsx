@@ -112,7 +112,6 @@ export default function AIAssistant({ userContext, onBookOpen }: AIAssistantProp
         setMessages(prev => [...prev, errorMessage]);
       }
     } catch (error) {
-      console.error('[AI] Error:', error);
       const errorMessage: Message = {
         role: 'assistant',
         content: 'Sorry, something went wrong. Please try again.',
