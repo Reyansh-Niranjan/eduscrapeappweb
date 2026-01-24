@@ -37,7 +37,7 @@ export default function Hero() {
           >
             <div className="w-32 h-32 rounded-2xl flex items-center justify-center shadow-2xl overflow-hidden border-2" style={{ background: 'var(--theme-card-bg)', borderColor: 'var(--theme-border)' }}>
               <OptimizedLogo
-                src="/logo.svg"
+                src="https://i.imgur.com/r4W9l7n.png"
                 alt="EduScrapeApp Logo"
                 className="w-full h-full object-cover"
                 fallbackText="EA"
