@@ -25,7 +25,7 @@
     "lucide-react": "^0.556.0",
     "pdf-parse": "^2.4.5",
     "pdfium-wasm": "^0.0.2",
-    "pdfjs-dist": "^5.4.296",
+    "pdfjs-dist": "^5.4.624",
     "pngjs": "^7.0.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
