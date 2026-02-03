@@ -1,7 +1,7 @@
 # EduScrapeApp
 
 <p align="center">
-  <img src="https://i.imgur.com/r4W9l7n.png" alt="EduScrapeApp Logo" width="120" height="120" />
+  <img src="./public/logo.svg" alt="EduScrapeApp Logo" width="120" height="120" />
 </p>
 
 <p align="center">
@@ -90,6 +90,7 @@ The assistant is implemented as a **server-side Convex action** using OpenRouter
 
 - **Responsive Design** - Works seamlessly on desktop, tablet, and mobile devices
 - **Dark/Light Theme** - Toggle between themes based on your preference
+- **Hero Highlights** - Quick AI-ready, secure, and time-saving callouts on the landing page
 - **Smooth Animations** - Polished transitions and interactions
 - **Accessibility** - Built with accessibility best practices
 
@@ -156,6 +157,7 @@ For administrators and content managers:
 - **JSZip** - In-browser ZIP file extraction
 - **PDF.js / React-PDF** - Advanced PDF rendering and viewing
 - **Sonner** - Toast notifications for user feedback
+- **Lucide React** - Icon system used across the new hero and footer highlights
 
 ### External Services
 - **Firebase Hosting** - Educational content delivery (https://eduscrape-host.web.app)

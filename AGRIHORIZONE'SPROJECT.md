@@ -13,6 +13,7 @@ This document summarizes the **code structure**, **libraries/techniques**, **how
 - **sonner** for toast notifications
 - **date-fns** for date/time formatting (used in some modules)
 - **clsx + tailwind-merge** for className composition (utility patterns)
+- **Lucide React** for hero/feature iconography
 
 ### Backend
 - **Convex** (database, real-time queries, server functions, HTTP routes)

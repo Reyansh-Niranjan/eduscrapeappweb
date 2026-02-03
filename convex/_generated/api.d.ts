@@ -27,6 +27,10 @@ import type * as quizzes from "../quizzes.js";
 import type * as router from "../router.js";
 import type * as team from "../team.js";
 import type * as updates from "../updates.js";
+import type * as userBookText from "../userBookText.js";
+import type * as userBookTextJobs from "../userBookTextJobs.js";
+import type * as userBookTextWorker from "../userBookTextWorker.js";
+import type * as userBooks from "../userBooks.js";
 import type * as userProfiles from "../userProfiles.js";
 
 import type {
@@ -55,6 +59,10 @@ declare const fullApi: ApiFromModules<{
   router: typeof router;
   team: typeof team;
   updates: typeof updates;
+  userBookText: typeof userBookText;
+  userBookTextJobs: typeof userBookTextJobs;
+  userBookTextWorker: typeof userBookTextWorker;
+  userBooks: typeof userBooks;
   userProfiles: typeof userProfiles;
 }>;
 

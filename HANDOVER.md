@@ -15,6 +15,7 @@ I have successfully implemented the **Deep Visual Search** feature for the EduSc
 
 ## Build Status
 *   **Fixed:** Replaced broken local PDF parsing libraries (`pdf-parse`, `pdfjs-dist`) which caused build errors in the Convex environment.
+*   **UI Note:** Landing page now uses local `/logo.svg` plus a hero highlight grid and live social/contact links.
 *   **Solution:** We now rely entirely on the **Vision Model** to parse the PDF, which is more powerful (handles images/charts) and eliminates heavy dependencies.
 *   **Verification:** `npx convex dev --once` passes successfully.
 

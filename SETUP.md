@@ -20,7 +20,7 @@ npm install
 
 Vite env vars must be prefixed with `VITE_`.
 
-Create a local env file using the example (your preference: keep both `.env.local` and `.env.production` locally):
+Create a local env file using the example (your preference: keep both `.env.local` and `.env.production` locally). These files should stay local and are ignored by `.gitignore`:
 
 - Copy `.env.example` → `.env.local` (development)
 - Copy `.env.example` → `.env.production` (production build)
