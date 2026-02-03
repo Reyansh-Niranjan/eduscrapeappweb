@@ -216,6 +216,49 @@ const applicationTables = {
     gradedAt: v.optional(v.number()),
   })
     .index("by_attempt", ["attemptId"]),
+
+  userBooks: defineTable({
+    userId: v.id("users"),
+    title: v.string(),
+    fileId: v.id("_storage"),
+    fileName: v.string(),
+    fileSize: v.number(),
+    uploadedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_uploaded", ["uploadedAt"]),
+
+  userBookPageTexts: defineTable({
+    bookId: v.id("userBooks"),
+    pageNumber: v.number(),
+    content: v.string(),
+    model: v.string(),
+    userId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_book", ["bookId"])
+    .index("by_book_page", ["bookId", "pageNumber"])
+    .index("by_user", ["userId"]),
+
+  userBookTextJobs: defineTable({
+    bookId: v.id("userBooks"),
+    pdfUrl: v.string(),
+    totalPages: v.number(),
+    nextPageNumber: v.number(),
+    status: v.union(v.literal("running"), v.literal("completed"), v.literal("paused")),
+    lastError: v.optional(v.string()),
+    lastPrimaryModel: v.optional(v.string()),
+    lastUsedModel: v.optional(v.string()),
+    fallbackActive: v.optional(v.boolean()),
+    userId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    startedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_book", ["bookId"])
+    .index("by_status", ["status"]),
 };
 
 export default defineSchema({

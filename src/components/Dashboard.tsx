@@ -20,6 +20,8 @@ import {
   Mail,
   GraduationCap,
   FileText,
+  BookPlus,
+  CalendarClock,
 } from "lucide-react";
 import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -30,6 +32,8 @@ import { toast } from "sonner";
 const Library = lazy(() => import("./Library"));
 const ProfileEdit = lazy(() => import("./ProfileEdit"));
 const Notes = lazy(() => import("./Notes"));
+const YourBooks = lazy(() => import("./YourBooks"));
+const DailyTimeTable = lazy(() => import("./DailyTimeTable"));
 
 function SectionLoader({ label }: { label: string }) {
   return (
@@ -392,7 +396,7 @@ DashboardOverview.displayName = "DashboardOverview";
 const Quiz = lazy(() => import("./Quiz"));
 
 export default function Dashboard({ onLogout }: DashboardProps) {
-  const [activeTab, setActiveTab] = useState<"overview" | "library" | "profile" | "quiz" | "notes">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "library" | "profile" | "quiz" | "notes" | "books" | "timetable">("overview");
   const [bookToNavigate, setBookToNavigate] = useState<{ path: string; name: string } | null>(null);
   const [currentQuiz, setCurrentQuiz] = useState<{ quizId: Id<"quizzes"> } | null>(null);
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
@@ -412,7 +416,15 @@ export default function Dashboard({ onLogout }: DashboardProps) {
 
   const userContext = useMemo(() => ({
     grade: userProfile?.grade,
-    currentPage: activeTab === "library" ? "library" : activeTab === "profile" ? "profile" : "dashboard",
+    currentPage: activeTab === "library"
+      ? "library"
+      : activeTab === "profile"
+        ? "profile"
+        : activeTab === "books"
+          ? "your-books"
+          : activeTab === "timetable"
+            ? "daily-timetable"
+            : "dashboard",
   }), [userProfile?.grade, activeTab]);
 
   if (authLoading) {
@@ -503,6 +515,26 @@ export default function Dashboard({ onLogout }: DashboardProps) {
               <FileText className="h-5 w-5" />
               <span className="font-medium">Notes</span>
             </button>
+            <button
+              onClick={() => setActiveTab("books")}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${activeTab === "books"
+                ? "bg-purple-600 text-white shadow-lg shadow-purple-500/20"
+                : "text-[var(--theme-text-secondary)] hover:bg-[var(--theme-bg-secondary)] hover:text-[var(--theme-text)]"
+                }`}
+            >
+              <BookPlus className="h-5 w-5" />
+              <span className="font-medium">Your Books</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("timetable")}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${activeTab === "timetable"
+                ? "bg-purple-600 text-white shadow-lg shadow-purple-500/20"
+                : "text-[var(--theme-text-secondary)] hover:bg-[var(--theme-bg-secondary)] hover:text-[var(--theme-text)]"
+                }`}
+            >
+              <CalendarClock className="h-5 w-5" />
+              <span className="font-medium">Your Daily TimeTable</span>
+            </button>
           </nav>
         </div>
 
@@ -590,6 +622,32 @@ export default function Dashboard({ onLogout }: DashboardProps) {
             }>
               <Suspense fallback={<SectionLoader label="notes" />}>
                 <Notes />
+              </Suspense>
+            </ErrorBoundary>
+          ) : activeTab === "books" ? (
+            <ErrorBoundary fallback={
+              <div className="flex items-center justify-center min-h-[400px]">
+                <div className="text-center">
+                  <p className="text-red-600 font-semibold">Failed to load Your Books</p>
+                  <button onClick={() => setActiveTab("overview")} className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg">Back to Home</button>
+                </div>
+              </div>
+            }>
+              <Suspense fallback={<SectionLoader label="your books" />}>
+                <YourBooks />
+              </Suspense>
+            </ErrorBoundary>
+          ) : activeTab === "timetable" ? (
+            <ErrorBoundary fallback={
+              <div className="flex items-center justify-center min-h-[400px]">
+                <div className="text-center">
+                  <p className="text-red-600 font-semibold">Failed to load timetable</p>
+                  <button onClick={() => setActiveTab("overview")} className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg">Back to Home</button>
+                </div>
+              </div>
+            }>
+              <Suspense fallback={<SectionLoader label="timetable" />}>
+                <DailyTimeTable />
               </Suspense>
             </ErrorBoundary>
           ) : activeTab === "profile" ? (

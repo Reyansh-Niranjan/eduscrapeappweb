@@ -297,10 +297,11 @@ export const getPortfolioContext = query({
       }
 
       // Fetch all portfolio data
-      const [projects, teamMembers, updates] = await Promise.all([
+      const [projects, teamMembers, updates, personalBooksContext] = await Promise.all([
         ctx.db.query("projects").collect(),
         ctx.db.query("teamMembers").withIndex("by_order", (q) => q.gte("order", 0)).collect(),
-        ctx.db.query("updates").withIndex("by_published", (q) => q.eq("published", true)).order("desc").take(5)
+        ctx.db.query("updates").withIndex("by_published", (q) => q.eq("published", true)).order("desc").take(5),
+        ctx.runQuery((api as any).userBooks.getMyBookContext, { maxChars: 8000 })
       ]);
 
       let context = "You are EduScrapeApp AI Assistant, an intelligent helper for students and educators.\n\n";
@@ -329,7 +330,13 @@ export const getPortfolioContext = query({
         context += "\n";
       }
 
+      if (personalBooksContext) {
+        context += "PERSONAL BOOKS (PRIVATE TO USER):\n";
+        context += `${personalBooksContext}\n\n`;
+      }
+
       context += "INSTRUCTIONS:\n";
+      context += "- If the user asks about topics, prefer their Personal Books when relevant\n";
       context += "- When users ask about topics, use web_search for general knowledge or current events\n";
       context += "- Use book_search to find educational materials in our library\n";
       context += "- Use open_chapter when users want to read or view any book/chapter\n";
