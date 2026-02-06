@@ -112,11 +112,13 @@ jobs:
           git fetch --tags --force
           PREV_TAG="${{ steps.prevrelease.outputs.prev_tag }}"
           if [ -z "$PREV_TAG" ]; then
-            RANGE="HEAD"
+            ROOT=$(git rev-list --max-parents=0 HEAD | tail -n 1)
+            RANGE="$ROOT..HEAD"
           elif git rev-parse -q --verify "$PREV_TAG" >/dev/null; then
             RANGE="$PREV_TAG..HEAD"
           else
-            RANGE="HEAD"
+            ROOT=$(git rev-list --max-parents=0 HEAD | tail -n 1)
+            RANGE="$ROOT..HEAD"
           fi
 
           echo "# ${{ needs.tag-commit.outputs.tag }}" > release.md
