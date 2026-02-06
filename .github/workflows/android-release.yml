@@ -127,47 +127,47 @@ jobs:
           git log --format='%aN' $RANGE | sort | uniq -c | sort -nr > /tmp/commit_counts.txt
           git log --merges --format='%aN' $RANGE | sort | uniq -c | sort -nr > /tmp/merge_counts.txt
 
-            python - <<'PY'
-      import collections
+          python - <<'EOF'
+import collections
 
-      def read_counts(path):
-        counts = collections.Counter()
-        try:
-          with open(path, 'r', encoding='utf-8') as f:
+def read_counts(path):
+    counts = collections.Counter()
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
             for line in f:
-              line = line.strip()
-              if not line:
-                continue
-              parts = line.split(None, 1)
-              if len(parts) != 2:
-                continue
-              count = int(parts[0])
-              name = parts[1].strip()
-              counts[name] += count
-        except FileNotFoundError:
-          pass
-        return counts
+                line = line.strip()
+                if not line:
+                    continue
+                parts = line.split(None, 1)
+                if len(parts) != 2:
+                    continue
+                count = int(parts[0])
+                name = parts[1].strip()
+                counts[name] += count
+    except FileNotFoundError:
+        pass
+    return counts
 
-      commits = read_counts('/tmp/commit_counts.txt')
-      merges = read_counts('/tmp/merge_counts.txt')
-      all_names = set(commits) | set(merges)
-      rows = []
-      for name in all_names:
-        c = commits.get(name, 0)
-        m = merges.get(name, 0)
-        rows.append((name, c, m, c + m))
+commits = read_counts('/tmp/commit_counts.txt')
+merges = read_counts('/tmp/merge_counts.txt')
+all_names = set(commits) | set(merges)
+rows = []
+for name in all_names:
+    c = commits.get(name, 0)
+    m = merges.get(name, 0)
+    rows.append((name, c, m, c + m))
 
-      rows.sort(key=lambda x: (x[3], x[1], x[2]), reverse=True)
-      top_name = rows[0][0] if rows else None
+rows.sort(key=lambda x: (x[3], x[1], x[2]), reverse=True)
+top_name = rows[0][0] if rows else None
 
-      with open('release.md', 'a', encoding='utf-8') as out:
-        if not rows:
-          out.write("- No contributions in this range.\n")
-        else:
-          for name, c, m, total in rows:
+with open('release.md', 'a', encoding='utf-8') as out:
+    if not rows:
+        out.write("- No contributions in this range.\n")
+    else:
+        for name, c, m, total in rows:
             star = " ⭐" if name == top_name else ""
             out.write(f"- @{name}: {c} commits, {m} merges{star}\n")
-      PY
+EOF
 
           echo "" >> release.md
           echo "Full Changelog: https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${{ needs.tag-commit.outputs.tag }}" >> release.md
