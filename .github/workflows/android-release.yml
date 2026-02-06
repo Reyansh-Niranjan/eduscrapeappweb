@@ -124,8 +124,41 @@ jobs:
           echo "" >> release.md
           echo "## Contributions" >> release.md
 
-          git log --format='%aN' $RANGE | sort | uniq -c | sort -nr > /tmp/commit_counts.txt
-          git log --merges --format='%aN' $RANGE | sort | uniq -c | sort -nr > /tmp/merge_counts.txt
+          git log --format='%aN|%aE' $RANGE | awk -F'|' '
+            {
+              name=$1; email=$2; handle="";
+              if (email ~ /@users.noreply.github.com/) {
+                if (email ~ /\+/) {
+                  split(email, parts, "@"); split(parts[1], subparts, "+"); handle=subparts[2];
+                } else {
+                  split(email, parts, "@"); handle=parts[1];
+                }
+              }
+              if (handle == "") {
+                gsub(/ /, "-", name);
+                handle=name;
+              }
+              print handle;
+            }
+          ' | sort | uniq -c | sort -nr > /tmp/commit_counts.txt
+
+          git log --merges --format='%aN|%aE' $RANGE | awk -F'|' '
+            {
+              name=$1; email=$2; handle="";
+              if (email ~ /@users.noreply.github.com/) {
+                if (email ~ /\+/) {
+                  split(email, parts, "@"); split(parts[1], subparts, "+"); handle=subparts[2];
+                } else {
+                  split(email, parts, "@"); handle=parts[1];
+                }
+              }
+              if (handle == "") {
+                gsub(/ /, "-", name);
+                handle=name;
+              }
+              print handle;
+            }
+          ' | sort | uniq -c | sort -nr > /tmp/merge_counts.txt
 
           if [ ! -s /tmp/commit_counts.txt ] && [ ! -s /tmp/merge_counts.txt ]; then
             echo "- No contributions in this range." >> release.md
