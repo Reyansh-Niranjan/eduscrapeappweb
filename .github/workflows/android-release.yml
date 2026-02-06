@@ -69,11 +69,14 @@ jobs:
       - name: Generate release summary
         id: summary
         run: |
+          git fetch --tags --force
           PREV_TAG="${{ needs.tag-commit.outputs.prev_tag }}"
           if [ -z "$PREV_TAG" ]; then
             RANGE="HEAD"
-          else
+          elif git rev-parse -q --verify "$PREV_TAG" >/dev/null; then
             RANGE="$PREV_TAG..HEAD"
+          else
+            RANGE="HEAD"
           fi
           echo "## Summary" > release.md
           echo "" >> release.md
