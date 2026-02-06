@@ -13,6 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.tagger.outputs.tag }}
+      prev_tag: ${{ steps.tagger.outputs.prev_tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,11 +25,13 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          SHORT_SHA=$(git rev-parse --short HEAD)
-          TAG="v${GITHUB_RUN_NUMBER}-${SHORT_SHA}"
+          PREV_TAG=$(git tag -l "v*" --sort=-v:refname | head -n 1)
+          COMMIT_COUNT=$(git rev-list --count HEAD)
+          TAG="v1.0.${COMMIT_COUNT}"
           git tag -a "$TAG" -m "Release $TAG" || true
           git push origin "$TAG" || true
           echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
 
   build-apk:
     needs: tag-commit
@@ -63,6 +66,28 @@ jobs:
         working-directory: android
         run: ./gradlew assembleDebug
 
+      - name: Generate release summary
+        id: summary
+        run: |
+          PREV_TAG="${{ needs.tag-commit.outputs.prev_tag }}"
+          if [ -z "$PREV_TAG" ]; then
+            RANGE="HEAD"
+          else
+            RANGE="$PREV_TAG..HEAD"
+          fi
+          echo "## Summary" > release.md
+          echo "" >> release.md
+          echo "- Commits since last release: $(git rev-list --count $RANGE)" >> release.md
+          echo "- Files changed: $(git diff --name-only $RANGE | wc -l | tr -d ' ')" >> release.md
+          echo "- Top areas touched:" >> release.md
+          git diff --name-only $RANGE | awk -F/ '{print $1}' | sort | uniq -c | sort -nr | head -n 6 | awk '{print "  - " $2 " (" $1 ")"}' >> release.md
+          echo "" >> release.md
+          echo "## Contributor activity" >> release.md
+          git log --format='%aN' $RANGE | sort | uniq -c | sort -nr | awk '{count=$1; $1=""; sub(/^ /, "", $0); printf "- @%s had %d commits\n", $0, count}' >> release.md
+          echo "" >> release.md
+          echo "## Notable changes" >> release.md
+          git diff --stat $RANGE >> release.md
+
       - name: Create GitHub Release
         if: ${{ success() }}
         uses: softprops/action-gh-release@v2
@@ -70,4 +95,4 @@ jobs:
           tag_name: ${{ needs.tag-commit.outputs.tag }}
           name: ${{ needs.tag-commit.outputs.tag }}
           files: android/app/build/outputs/apk/debug/app-debug.apk
-          generate_release_notes: true
+          body_path: release.md
