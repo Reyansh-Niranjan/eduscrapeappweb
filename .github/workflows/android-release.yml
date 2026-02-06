@@ -158,7 +158,7 @@ jobs:
           path: release.md
 
   build-apk:
-    needs: get-history
+    needs: [get-history, tag-commit]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
