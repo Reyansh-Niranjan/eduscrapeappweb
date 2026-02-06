@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: read
 
 jobs:
   tag-commit:
@@ -66,6 +67,15 @@ jobs:
         working-directory: android
         run: ./gradlew assembleDebug
 
+      - name: Generate Changelog
+        id: changelog
+        uses: mikepenz/release-changelog-builder-action@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          fromTag: ${{ needs.tag-commit.outputs.prev_tag }}
+          toTag: ${{ needs.tag-commit.outputs.tag }}
+
       - name: Generate release summary
         id: summary
         run: |
@@ -78,18 +88,27 @@ jobs:
           else
             RANGE="HEAD"
           fi
-          echo "## Summary" > release.md
+          echo "# Release Summary" > release.md
           echo "" >> release.md
-          echo "- Commits since last release: $(git rev-list --count $RANGE)" >> release.md
-          echo "- Files changed: $(git diff --name-only $RANGE | wc -l | tr -d ' ')" >> release.md
-          echo "- Top areas touched:" >> release.md
-          git diff --name-only $RANGE | awk -F/ '{print $1}' | sort | uniq -c | sort -nr | head -n 6 | awk '{print "  - " $2 " (" $1 ")"}' >> release.md
+          echo "## Quick Stats" >> release.md
+          echo "| Metric | Count |" >> release.md
+          echo "|--------|-------|" >> release.md
+          echo "| Commits | $(git rev-list --count $RANGE 2>/dev/null || echo 0) |" >> release.md
+          echo "| Files Changed | $(git diff --name-only $RANGE 2>/dev/null | wc -l | tr -d ' ') |" >> release.md
+          echo "| Contributors | $(git log --format='%aN' $RANGE 2>/dev/null | sort -u | wc -l | tr -d ' ') |" >> release.md
           echo "" >> release.md
-          echo "## Contributor activity" >> release.md
-          git log --format='%aN' $RANGE | sort | uniq -c | sort -nr | awk '{count=$1; $1=""; sub(/^ /, "", $0); printf "- @%s had %d commits\n", $0, count}' >> release.md
+          echo "## Top Directories Changed" >> release.md
+          echo "| Directory | Files |" >> release.md
+          echo "|-----------|-------|" >> release.md
+          git diff --name-only $RANGE 2>/dev/null | awk -F/ '{print $1}' | sort | uniq -c | sort -nr | head -6 | awk '{printf "| %s | %d |\n", $2, $1}' >> release.md
           echo "" >> release.md
-          echo "## Notable changes" >> release.md
-          git diff --stat $RANGE >> release.md
+          echo "## Contributors" >> release.md
+          echo "| Author | Commits |" >> release.md
+          echo "|--------|---------|" >> release.md
+          git log --format='%aN' $RANGE 2>/dev/null | sort | uniq -c | sort -nr | head -5 | awk '{count=$1; $1=""; sub(/^ /, "", $0); printf "| **%s** | %d |\n", $0, count}' >> release.md
+          echo "" >> release.md
+          echo "## Changelog" >> release.md
+          echo "${{ steps.changelog.outputs.changelog }}" >> release.md
 
       - name: Create GitHub Release
         if: ${{ success() }}
