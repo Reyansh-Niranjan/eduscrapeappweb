@@ -14,7 +14,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.tagger.outputs.tag }}
-      prev_tag: ${{ steps.tagger.outputs.prev_tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -52,65 +51,20 @@ jobs:
           git push origin "$TAG" || true
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
-  build-apk:
+  get-history:
     needs: tag-commit
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
         with:
-          node-version: 22
-          cache: "npm"
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: "temurin"
-          java-version: 21
-          cache: "gradle"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build web assets
-        run: npm run build
-
-      - name: Sync Capacitor Android
-        run: npx cap sync android
-
-      - name: Build debug APK
-        working-directory: android
-        run: ./gradlew assembleDebug
-
-      - name: Resolve previous release tag
-        id: prevrelease
-        run: |
-          PREV_TAG=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/latest" | jq -r .tag_name)
-          if [ "$PREV_TAG" = "null" ]; then
-            PREV_TAG=""
-          fi
-          echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
-
-      - name: Generate Changelog
-        id: changelog
-        uses: mikepenz/release-changelog-builder-action@v5
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          fromTag: ${{ steps.prevrelease.outputs.prev_tag }}
-          toTag: ${{ needs.tag-commit.outputs.tag }}
-          failOnError: false
+          fetch-depth: 0
 
       - name: Build release body
-        id: summary
         run: |
           git fetch --tags --force
-          PREV_TAG="${{ steps.prevrelease.outputs.prev_tag }}"
+          CURRENT_TAG="${{ needs.tag-commit.outputs.tag }}"
+          PREV_TAG=$(git tag -l "v[0-9]*.[0-9]*.[0-9]*" --sort=-v:refname | grep -v "^${CURRENT_TAG}$" | head -n 1)
           if [ -z "$PREV_TAG" ]; then
             ROOT=$(git rev-list --max-parents=0 HEAD | tail -n 1)
             RANGE="$ROOT..HEAD"
@@ -121,14 +75,10 @@ jobs:
             RANGE="$ROOT..HEAD"
           fi
 
-          echo "# ${{ needs.tag-commit.outputs.tag }}" > release.md
+          echo "# ${CURRENT_TAG}" > release.md
           echo "" >> release.md
           echo "## What's Changed" >> release.md
-          if [ -n "${{ steps.changelog.outputs.changelog }}" ]; then
-            echo "${{ steps.changelog.outputs.changelog }}" >> release.md
-          else
-            git log --pretty="- %s (@%an)" $RANGE >> release.md
-          fi
+          git log --pretty="- %s (@%an)" $RANGE >> release.md
           echo "" >> release.md
           echo "## Contributions" >> release.md
 
@@ -199,7 +149,54 @@ jobs:
           fi
 
           echo "" >> release.md
-          echo "Full Changelog: https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${{ needs.tag-commit.outputs.tag }}" >> release.md
+          echo "Full Changelog: https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${CURRENT_TAG}" >> release.md
+
+      - name: Upload release notes
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release.md
+
+  build-apk:
+    needs: get-history
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: 21
+          cache: "gradle"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web assets
+        run: npm run build
+
+      - name: Sync Capacitor Android
+        run: npx cap sync android
+
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug
+
+      - name: Download release notes
+        uses: actions/download-artifact@v4
+        with:
+          name: release-notes
+          path: .
 
       - name: Create GitHub Release
         if: ${{ success() }}
