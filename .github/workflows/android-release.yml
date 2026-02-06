@@ -20,6 +20,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+        with:
+          fetch-depth: 0
 
       - name: Create tag for commit
         id: tagger
@@ -124,7 +126,11 @@ jobs:
           echo "# ${{ needs.tag-commit.outputs.tag }}" > release.md
           echo "" >> release.md
           echo "## What's Changed" >> release.md
-          echo "${{ steps.changelog.outputs.changelog }}" >> release.md
+          if [ -n "${{ steps.changelog.outputs.changelog }}" ]; then
+            echo "${{ steps.changelog.outputs.changelog }}" >> release.md
+          else
+            git log --pretty="- %s (@%an)" $RANGE >> release.md
+          fi
           echo "" >> release.md
           echo "## Contributions" >> release.md
 
