@@ -103,6 +103,7 @@ jobs:
         with:
           fromTag: ${{ steps.prevrelease.outputs.prev_tag }}
           toTag: ${{ needs.tag-commit.outputs.tag }}
+          failOnError: false
 
       - name: Build release body
         id: summary
