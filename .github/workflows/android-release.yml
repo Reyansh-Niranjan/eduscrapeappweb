@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: write
-  pull-requests: read
 
 jobs:
   tag-commit:
@@ -26,13 +25,31 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          PREV_TAG=$(git tag -l "v*" --sort=-v:refname | head -n 1)
-          COMMIT_COUNT=$(git rev-list --count HEAD)
-          TAG="v1.0.${COMMIT_COUNT}"
+          LAST_TAG=$(git tag -l "v[0-9]*.[0-9]*.[0-9]*" --sort=-v:refname | head -n 1)
+          if [ -z "$LAST_TAG" ]; then
+            MAJOR=1
+            MINOR=0
+            PATCH=0
+          else
+            MAJOR=$(echo "$LAST_TAG" | sed 's/^v//' | awk -F. '{print $1}')
+            MINOR=$(echo "$LAST_TAG" | sed 's/^v//' | awk -F. '{print $2}')
+            PATCH=$(echo "$LAST_TAG" | sed 's/^v//' | awk -F. '{print $3}')
+          fi
+
+          PATCH=$((PATCH + 1))
+          if [ "$PATCH" -gt 9 ]; then
+            PATCH=0
+            MINOR=$((MINOR + 1))
+          fi
+          if [ "$MINOR" -gt 9 ]; then
+            MINOR=0
+            MAJOR=$((MAJOR + 1))
+          fi
+
+          TAG="v${MAJOR}.${MINOR}.${PATCH}"
           git tag -a "$TAG" -m "Release $TAG" || true
           git push origin "$TAG" || true
           echo "tag=$TAG" >> $GITHUB_OUTPUT
-          echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
 
   build-apk:
     needs: tag-commit
@@ -67,20 +84,31 @@ jobs:
         working-directory: android
         run: ./gradlew assembleDebug
 
+      - name: Resolve previous release tag
+        id: prevrelease
+        run: |
+          PREV_TAG=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/latest" | jq -r .tag_name)
+          if [ "$PREV_TAG" = "null" ]; then
+            PREV_TAG=""
+          fi
+          echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
+
       - name: Generate Changelog
         id: changelog
         uses: mikepenz/release-changelog-builder-action@v5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          fromTag: ${{ needs.tag-commit.outputs.prev_tag }}
+          fromTag: ${{ steps.prevrelease.outputs.prev_tag }}
           toTag: ${{ needs.tag-commit.outputs.tag }}
 
-      - name: Generate release summary
+      - name: Build release body
         id: summary
         run: |
           git fetch --tags --force
-          PREV_TAG="${{ needs.tag-commit.outputs.prev_tag }}"
+          PREV_TAG="${{ steps.prevrelease.outputs.prev_tag }}"
           if [ -z "$PREV_TAG" ]; then
             RANGE="HEAD"
           elif git rev-parse -q --verify "$PREV_TAG" >/dev/null; then
@@ -88,27 +116,61 @@ jobs:
           else
             RANGE="HEAD"
           fi
-          echo "# Release Summary" > release.md
+
+          echo "# ${{ needs.tag-commit.outputs.tag }}" > release.md
           echo "" >> release.md
-          echo "## Quick Stats" >> release.md
-          echo "| Metric | Count |" >> release.md
-          echo "|--------|-------|" >> release.md
-          echo "| Commits | $(git rev-list --count $RANGE 2>/dev/null || echo 0) |" >> release.md
-          echo "| Files Changed | $(git diff --name-only $RANGE 2>/dev/null | wc -l | tr -d ' ') |" >> release.md
-          echo "| Contributors | $(git log --format='%aN' $RANGE 2>/dev/null | sort -u | wc -l | tr -d ' ') |" >> release.md
-          echo "" >> release.md
-          echo "## Top Directories Changed" >> release.md
-          echo "| Directory | Files |" >> release.md
-          echo "|-----------|-------|" >> release.md
-          git diff --name-only $RANGE 2>/dev/null | awk -F/ '{print $1}' | sort | uniq -c | sort -nr | head -6 | awk '{printf "| %s | %d |\n", $2, $1}' >> release.md
-          echo "" >> release.md
-          echo "## Contributors" >> release.md
-          echo "| Author | Commits |" >> release.md
-          echo "|--------|---------|" >> release.md
-          git log --format='%aN' $RANGE 2>/dev/null | sort | uniq -c | sort -nr | head -5 | awk '{count=$1; $1=""; sub(/^ /, "", $0); printf "| **%s** | %d |\n", $0, count}' >> release.md
-          echo "" >> release.md
-          echo "## Changelog" >> release.md
+          echo "## What's Changed" >> release.md
           echo "${{ steps.changelog.outputs.changelog }}" >> release.md
+          echo "" >> release.md
+          echo "## Contributions" >> release.md
+
+          git log --format='%aN' $RANGE | sort | uniq -c | sort -nr > /tmp/commit_counts.txt
+          git log --merges --format='%aN' $RANGE | sort | uniq -c | sort -nr > /tmp/merge_counts.txt
+
+          python - <<'PY'
+import collections
+
+def read_counts(path):
+    counts = collections.Counter()
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                parts = line.split(None, 1)
+                if len(parts) != 2:
+                    continue
+                count = int(parts[0])
+                name = parts[1].strip()
+                counts[name] += count
+    except FileNotFoundError:
+        pass
+    return counts
+
+commits = read_counts('/tmp/commit_counts.txt')
+merges = read_counts('/tmp/merge_counts.txt')
+all_names = set(commits) | set(merges)
+rows = []
+for name in all_names:
+    c = commits.get(name, 0)
+    m = merges.get(name, 0)
+    rows.append((name, c, m, c + m))
+
+rows.sort(key=lambda x: (x[3], x[1], x[2]), reverse=True)
+top_name = rows[0][0] if rows else None
+
+with open('release.md', 'a', encoding='utf-8') as out:
+    if not rows:
+        out.write("- No contributions in this range.\n")
+    else:
+        for name, c, m, total in rows:
+            star = " ⭐" if name == top_name else ""
+            out.write(f"- @{name}: {c} commits, {m} merges{star}\n")
+PY
+
+          echo "" >> release.md
+          echo "Full Changelog: https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${{ needs.tag-commit.outputs.tag }}" >> release.md
 
       - name: Create GitHub Release
         if: ${{ success() }}
