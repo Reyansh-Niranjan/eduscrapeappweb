@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import type { ComponentType } from "react";
 import { Capacitor } from "@capacitor/core";
-import { LocalNotifications } from "@capacitor/local-notifications";
+import { LocalNotifications, Weekday } from "@capacitor/local-notifications";
 import {
   BookOpen,
   Brain,
@@ -24,6 +25,7 @@ type TimetableItem = {
   start: string;
   end: string;
   icon: string;
+  notificationId?: number;
 };
 
 const DAYS: Day[] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -40,7 +42,7 @@ const ICON_OPTIONS = [
   { key: "Dumbbell", label: "Workout", icon: Dumbbell },
 ];
 
-const iconLookup = ICON_OPTIONS.reduce<Record<string, (props: { className?: string }) => JSX.Element>>(
+const iconLookup = ICON_OPTIONS.reduce<Record<string, ComponentType<{ className?: string }>>>(
   (acc, entry) => {
     acc[entry.key] = entry.icon;
     return acc;
@@ -56,25 +58,25 @@ const timeToMinutes = (time: string) => {
 const isOverlap = (start: string, end: string, otherStart: string, otherEnd: string) =>
   timeToMinutes(start) < timeToMinutes(otherEnd) && timeToMinutes(otherStart) < timeToMinutes(end);
 
-const nextOccurrenceDate = (day: Day, time: string) => {
-  const dayIndexMap: Record<Day, number> = {
-    Sunday: 0,
-    Monday: 1,
-    Tuesday: 2,
-    Wednesday: 3,
-    Thursday: 4,
-    Friday: 5,
-    Saturday: 6,
+const dayToWeekday = (day: Day): Weekday => {
+  const map: Record<Day, Weekday> = {
+    Sunday: Weekday.Sunday,
+    Monday: Weekday.Monday,
+    Tuesday: Weekday.Tuesday,
+    Wednesday: Weekday.Wednesday,
+    Thursday: Weekday.Thursday,
+    Friday: Weekday.Friday,
+    Saturday: Weekday.Saturday,
   };
-  const now = new Date();
-  const target = new Date(now);
-  const [hours, minutes] = time.split(":").map(Number);
-  target.setHours(hours, minutes, 0, 0);
-  const targetDayIndex = dayIndexMap[day];
-  let diff = (targetDayIndex - now.getDay() + 7) % 7;
-  if (diff === 0 && target <= now) diff = 7;
-  target.setDate(now.getDate() + diff);
-  return target;
+  return map[day];
+};
+
+const notificationIdFromItemId = (id: string) => {
+  let hash = 0;
+  for (let i = 0; i < id.length; i += 1) {
+    hash = (hash * 31 + id.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash) % 1_000_000_000;
 };
 
 export default function DailyTimeTable() {
@@ -109,6 +111,32 @@ export default function DailyTimeTable() {
     LocalNotifications.requestPermissions().catch(() => null);
   }, []);
 
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    if (items.length === 0) return;
+
+    const ensureScheduled = async () => {
+      const permission = await LocalNotifications.requestPermissions();
+      if (permission.display !== "granted") return;
+
+      const updates: Record<string, number> = {};
+      for (const item of items) {
+        if (item.notificationId) continue;
+        const notificationId = notificationIdFromItemId(item.id);
+        await scheduleAlarm({ ...item, notificationId });
+        updates[item.id] = notificationId;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        setItems((prev) =>
+          prev.map((item) => (updates[item.id] ? { ...item, notificationId: updates[item.id] } : item))
+        );
+      }
+    };
+
+    void ensureScheduled();
+  }, [items]);
+
   const totalItems = items.length;
 
   const dayItems = useMemo(() => {
@@ -135,14 +163,19 @@ export default function DailyTimeTable() {
     if (!Capacitor.isNativePlatform()) return;
     const permission = await LocalNotifications.requestPermissions();
     if (permission.display !== "granted") return;
-    const scheduleAt = nextOccurrenceDate(item.day, item.start);
+    const [hour, minute] = item.start.split(":").map(Number);
+    const weekday = dayToWeekday(item.day);
+    const notificationId = item.notificationId ?? notificationIdFromItemId(item.id);
     await LocalNotifications.schedule({
       notifications: [
         {
-          id: Math.floor(Math.random() * 1_000_000_000),
+          id: notificationId,
           title: item.title || "Timetable",
           body: `${item.start} - ${item.end}`,
-          schedule: { at: scheduleAt },
+          schedule: {
+            on: { weekday, hour, minute, second: 0 },
+            allowWhileIdle: true,
+          },
         },
       ],
     });
@@ -165,13 +198,15 @@ export default function DailyTimeTable() {
       setError("This time range overlaps another session.");
       return;
     }
+    const newId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const newItem: TimetableItem = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id: newId,
       day: form.day,
       title: form.title.trim(),
       start: form.start,
       end: form.end,
       icon: form.icon,
+      notificationId: notificationIdFromItemId(newId),
     };
     setItems((prev) => [...prev, newItem]);
     await scheduleAlarm(newItem);
@@ -179,7 +214,15 @@ export default function DailyTimeTable() {
     setIsOpen(false);
   };
 
-  const handleDelete = (id: string) => setItems((prev) => prev.filter((item) => item.id !== id));
+  const handleDelete = (id: string) => {
+    setItems((prev) => {
+      const target = prev.find((item) => item.id === id);
+      if (target?.notificationId && Capacitor.isNativePlatform()) {
+        LocalNotifications.cancel({ notifications: [{ id: target.notificationId }] }).catch(() => null);
+      }
+      return prev.filter((item) => item.id !== id);
+    });
+  };
 
   return (
     <div className="p-8 max-w-7xl mx-auto min-h-screen bg-[var(--theme-bg)]">
