@@ -94,6 +94,9 @@ jobs:
                 gsub(/ /, "-", name);
                 handle=name;
               }
+              if (tolower(handle) == "reyansh") {
+                handle="Reyansh-Niranjan";
+              }
               print handle;
             }
           ' | sort | uniq -c | sort -nr > /tmp/commit_counts.txt
@@ -111,6 +114,9 @@ jobs:
               if (handle == "") {
                 gsub(/ /, "-", name);
                 handle=name;
+              }
+              if (tolower(handle) == "reyansh") {
+                handle="Reyansh-Niranjan";
               }
               print handle;
             }
