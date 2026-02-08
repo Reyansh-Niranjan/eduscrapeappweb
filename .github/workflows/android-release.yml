@@ -76,7 +76,26 @@ jobs:
           echo "# ${CURRENT_TAG}" > release.md
           echo "" >> release.md
           echo "## What's Changed" >> release.md
-          git log --pretty="- %s (@%an)" $RANGE >> release.md
+          git log --pretty="%s|%aN|%aE" $RANGE | awk -F'|' '
+            {
+              subject=$1; name=$2; email=$3; handle="";
+              if (email ~ /@users.noreply.github.com/) {
+                if (email ~ /\+/) {
+                  split(email, parts, "@"); split(parts[1], subparts, "+"); handle=subparts[2];
+                } else {
+                  split(email, parts, "@"); handle=parts[1];
+                }
+              }
+              if (handle == "") {
+                gsub(/ /, "-", name);
+                handle=name;
+              }
+              if (tolower(handle) == "reyansh") {
+                handle="Reyansh-Niranjan";
+              }
+              printf "- %s (@%s)\n", subject, handle;
+            }
+          ' >> release.md
           echo "" >> release.md
           echo "## Contributions" >> release.md
 
