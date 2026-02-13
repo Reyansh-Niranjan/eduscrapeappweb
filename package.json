@@ -18,7 +18,7 @@
   "dependencies": {
     "@auth/core": "^0.37.4",
     "@capacitor/android": "^8.0.2",
-    "@capacitor/cli": "^8.0.2",
+    "@capacitor/cli": "^8.1.0",
     "@capacitor/core": "^8.1.0",
     "@capacitor/local-notifications": "^8.0.0",
     "@convex-dev/auth": "^0.0.90",
