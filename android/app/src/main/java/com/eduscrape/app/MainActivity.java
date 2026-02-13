@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.content.IntentSender;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.util.Log;
 
 import com.getcapacitor.BridgeActivity;
 import com.google.android.play.core.appupdate.AppUpdateInfo;
@@ -15,6 +16,7 @@ import com.google.android.play.core.install.model.InstallStatus;
 import com.google.android.play.core.install.model.UpdateAvailability;
 
 public class MainActivity extends BridgeActivity {
+	private static final String TAG = "MainActivity";
 	private static final int APP_UPDATE_REQUEST_CODE = 1001;
 	private AppUpdateManager appUpdateManager;
 
@@ -51,12 +53,16 @@ public class MainActivity extends BridgeActivity {
 
 		appUpdateManager
 			.getAppUpdateInfo()
-			.addOnSuccessListener(this::handleAppUpdateInfo);
+			.addOnSuccessListener(this::handleAppUpdateInfo)
+			.addOnFailureListener(exception -> Log.w(TAG, "Failed to check for app updates", exception));
 	}
 
 	private void handleAppUpdateInfo(AppUpdateInfo appUpdateInfo) {
 		if (appUpdateInfo.installStatus() == InstallStatus.DOWNLOADED) {
-			appUpdateManager.completeUpdate();
+			appUpdateManager
+				.completeUpdate()
+				.addOnSuccessListener(unused -> Log.i(TAG, "App update completed"))
+				.addOnFailureListener(exception -> Log.w(TAG, "Failed to complete app update", exception));
 			return;
 		}
 
@@ -72,7 +78,8 @@ public class MainActivity extends BridgeActivity {
 					AppUpdateOptions.newBuilder(AppUpdateType.IMMEDIATE).build(),
 					APP_UPDATE_REQUEST_CODE
 				);
-			} catch (IntentSender.SendIntentException ignored) {
+			} catch (IntentSender.SendIntentException exception) {
+				Log.w(TAG, "Failed to start app update flow", exception);
 			}
 		}
 	}
