@@ -23,7 +23,7 @@
     "@capacitor/local-notifications": "^8.0.1",
     "@convex-dev/auth": "^0.0.90",
     "clsx": "^2.1.1",
-    "convex": "^1.31.7",
+    "convex": "^1.32.0",
     "framer-motion": "^12.34.0",
     "isexe": "^3.1.4",
     "jszip": "^3.10.1",
