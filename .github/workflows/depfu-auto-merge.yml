@@ -1,0 +1,41 @@
+name: Auto-merge Depfu PRs
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  merge:
+    if: ${{ (github.event.pull_request.user.login == 'depfu[bot]' || github.event.pull_request.user.login == 'depfu') && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Configure merge identity
+        run: |
+          git config user.name "Reyansh Niranjan"
+          git config user.email "reyanshniranjanodm@gmail.com"
+
+      - name: Fetch PR branch
+        run: |
+          git fetch origin "${{ github.event.pull_request.head.ref }}:depfu-pr"
+
+      - name: Merge PR branch into main (skip on conflict)
+        run: |
+          if git merge --no-ff --no-edit depfu-pr; then
+            git push origin HEAD:main
+          else
+            echo "Merge conflict detected. Skipping auto-merge."
+            git merge --abort || true
+            exit 0
+          fi
