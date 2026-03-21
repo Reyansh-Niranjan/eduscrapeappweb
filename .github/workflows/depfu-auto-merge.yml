@@ -32,7 +32,7 @@ jobs:
 
       - name: Merge PR branch into main (skip on conflict)
         run: |
-          if git merge --no-ff --no-edit depfu-pr; then
+          if git merge --no-ff -m "Merge pull request #${{ github.event.pull_request.number }} from ${{ github.event.pull_request.head.repo.full_name }}/${{ github.event.pull_request.head.ref }}" depfu-pr; then
             git push origin HEAD:main
           else
             echo "Merge conflict detected. Skipping auto-merge."
