@@ -1,0 +1,55 @@
+name: NCERT Direct Scrape to DEV
+
+on:
+  schedule:
+    - cron: '0 3 * * *'  # Daily at 3 AM UTC
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: DEV
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run NCERT Scraper (Node.js)
+        run: node -e '
+const fs = require("fs");
+const https = require("https");
+
+console.log("Starting NCERT scraper...");
+
+// Basic structure - expand as needed
+const ncertIndex = {
+  lastUpdated: new Date().toISOString(),
+  classes: [1,2,3,4,5,6,7,8,9,10,11,12],
+  baseUrl: "https://ncert.nic.in/textbook.php",
+  note: "Direct links only - no PDFs hosted"
+};
+
+fs.writeFileSync("content/ncert-index.json", JSON.stringify(ncertIndex, null, 2));
+console.log("✅ Generated ncert-index.json");
+' 
+
+      - name: Create content directory if not exists
+        run: mkdir -p content
+
+      - name: Commit and Push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add content/ncert-index.json || true
+          git commit -m "chore: update NCERT index via GitHub Actions" || echo "No changes to commit"
+          git push origin DEV
